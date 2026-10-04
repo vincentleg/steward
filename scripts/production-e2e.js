@@ -20,7 +20,7 @@ try {
       await page.goto(origin, { timeout: 120000 });
       await page.getByRole('button', { name: 'See Steward take over' }).waitFor();
       assert.equal(
-        await page.locator('.brand-definition').textContent(),
+        (await page.locator('.brand-definition').textContent()).trim().replace(/\s+/g, ' '),
         'Sense · Think · Evaluate · Watch · Act · Resolve · Defend',
       );
       assert.equal(
