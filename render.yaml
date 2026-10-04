@@ -1,0 +1,17 @@
+# Optional reproducible configuration. Use only with NO payment method on file.
+services:
+  - type: web
+    name: steward-public
+    runtime: node
+    plan: free
+    region: oregon
+    branch: phase-2-5-deployment
+    buildCommand: npm ci --omit=dev
+    startCommand: node cloud-server.js
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: NODE_ENV
+        value: production

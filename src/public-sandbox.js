@@ -12,6 +12,9 @@ export function createSandbox({
   now = () => Date.now(),
   rateLimit = 120,
   maxSessions = 150,
+  publicBaseUrl = process.env.PUBLIC_BASE_URL,
+  rateLimitKey = (req) =>
+    String(req.headers['cf-connecting-ip'] || req.socket.remoteAddress || 'local'),
 } = {}) {
   const store = new EventStore(null, {
     seed: (mode) => ({ capability: travelCapability.id, ...travelCapability.seed(mode) }),
@@ -54,6 +57,12 @@ export function createSandbox({
         'Content-Security-Policy',
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; form-action 'self'",
       );
+      if (req.method === 'GET' && url.pathname === '/') {
+        res.writeHead(302, { Location: '/sandbox', 'Cache-Control': 'no-store' });
+        return res.end();
+      }
+      if (req.method === 'GET' && url.pathname === '/healthz')
+        return json(res, 200, { ok: true, mode: 'public-sandbox' });
       if (req.method === 'GET' && ['/sandbox', '/sandbox/'].includes(url.pathname)) {
         let html = readFileSync('public/index.html', 'utf8')
           .replace('<body>', '<body data-mode="public">')
@@ -97,11 +106,7 @@ export function createSandbox({
         if (!String(req.headers['content-type'] || '').startsWith('application/json'))
           return json(res, 415, { error: 'JSON required' });
         const origin = req.headers.origin;
-        if (
-          origin &&
-          origin !== process.env.PUBLIC_BASE_URL &&
-          origin !== `http://${req.headers.host}`
-        )
+        if (origin && origin !== publicBaseUrl && origin !== `http://${req.headers.host}`)
           return json(res, 403, { error: 'Origin not allowed' });
         let raw = '';
         for await (const chunk of req) {
@@ -118,7 +123,7 @@ export function createSandbox({
           return json(res, 400, { error: 'This demo accepts no personal data or custom commands' });
       }
       if (req.method === 'POST' && url.pathname === '/sandbox/api/sessions') {
-        const ip = String(req.headers['cf-connecting-ip'] || req.socket.remoteAddress || 'local');
+        const ip = rateLimitKey(req);
         const limit = limits.get(ip) || { count: 0, reset: now() + 10 * 60 * 1000 };
         limit.count++;
         limits.set(ip, limit);
