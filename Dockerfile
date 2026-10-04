@@ -8,5 +8,6 @@ COPY public ./public
 RUN mkdir .data && chown -R node:node /app
 USER node
 ENV PORT=3000
+ENV BIND_HOST=0.0.0.0
 EXPOSE 3000
 CMD ["node", "server.js"]

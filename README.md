@@ -10,6 +10,8 @@ Steward models what matters, detects deviations, compares possible futures, comp
 
 ![Steward decision card](docs/decision.png)
 
+[Watch the redesigned 2:31 demo](docs/submission-candidate.mp4) · [Architecture](docs/ARCHITECTURE.md) · [Stage runbook](docs/DEMO.md) · [Submission checklist](docs/SUBMISSION-CHECKLIST.md)
+
 ## Run
 
 Node 22 or newer.
@@ -94,7 +96,7 @@ Outcome restoration requires checking the booking, single payment/refund receipt
 
 Vincent’s personal mailbox is receive-only: no password, OAuth, contacts or inbox-reading access. Secrets remain server-side. Approval GET only displays the plan; signed, expiring, scoped POST performs the single idempotent authorization. Reuse never duplicates actions. Built with privacy-by-design principles; no claim of audited legal compliance.
 
-The private disk store supports one process on a persistent volume. Horizontal scaling needs transactional persistence. Private runs are not exposed through the public gateway. Production authentication and a distributed public service are outside this hackathon’s scope.
+The private LIVE server binds loopback by default. Only the allowlisted local gateway is tunneled publicly. Container deployment explicitly sets `BIND_HOST=0.0.0.0` and requires a protected private route. The private disk store supports one process on a persistent volume. Horizontal scaling needs transactional persistence. Private runs are not exposed through the public gateway. Production authentication and a distributed public service are outside this hackathon’s scope.
 
 ## Anonymous public sandbox
 
@@ -103,7 +105,7 @@ npm run sandbox       # synthetic sessions on 127.0.0.1:3003
 npm run phone:gateway # allowlisted public paths on 127.0.0.1:3002
 ```
 
-Open `/sandbox` through the configured HTTPS gateway. Visitors need no account, email, connected accounts or personal information. Each session receives a random, browser-scoped bearer capability; other sessions cannot read or approve it. Synthetic state stays in memory and expires after 30 minutes. Visitors approve directly in their own browser. This service has no email adapter and cannot send Vincent an approval.
+Open `/sandbox` through the configured HTTPS gateway. Visitors need no account, email, connected accounts or personal information. Each session receives a random, browser-scoped bearer capability; other sessions cannot read or approve it. Synthetic state stays in memory and expires after 30 minutes. Network source identifiers are retained only in memory for ten-minute rate limiting; no visitor email, account, analytics or advertising tracker is collected by Steward. Visitors approve directly in their own browser. This service has no email adapter and cannot send Vincent an approval.
 
 Public inputs accept only the fixed scenario. Session creation is bounded to 150 concurrent sessions and 120 requests per source IP per ten minutes. `/sandbox/share` contains the QR poster after `node --env-file-if-exists=.env scripts/create-qr.js`. Free Quick Tunnels are temporary; keep the process and laptop running. Recheck reachability before presenting. No paid resources are required or provisioned.
 
@@ -121,7 +123,7 @@ Playwright needs Chromium (`npx playwright install chromium` if absent). Browser
 
 ## Demo and deployment
 
-See [stage runbook](docs/DEMO.md), [video script](docs/VIDEO.md), and [build notes](docs/BUILD-NOTES.md).
+See [stage runbook](docs/DEMO.md), [video script](docs/VIDEO.md), [general architecture](docs/ARCHITECTURE.md), [design rationale](docs/DESIGN.md), [open-source audit](docs/OPEN-SOURCE.md), and [build notes](docs/BUILD-NOTES.md).
 
 A Dockerfile is included. Deploy one instance, mount persistent storage at `/app/.data`, configure the four email/approval variables, and route a public HTTPS origin to port 3000. The local phone gateway and free HTTPS tunnel have been exercised; keep the tunnel running for the temporary public URL. `/api/health` reports readiness without exposing credentials.
 
@@ -132,3 +134,5 @@ A Dockerfile is included. Deploy one instance, mount persistent storage at `/app
 MIT licensed. Contributions should preserve the one-story approval gate and deterministic economics.
 
 The verified LIVE checkpoint is tagged `golden-live-v1`. The original `docs/replay.webm` remains the stage video fallback. Optional search/browser integrations and additional domains were cut to protect reliability and zero spend.
+
+CodeRabbit official skills are present, but no CodeRabbit review has run: the CLI/authentication were unavailable. See the open-source audit for precise status.

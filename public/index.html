@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#111914" />
+    <meta name="theme-color" content="#f6f7fb" />
     <meta
       name="description"
       content="When plans break, Steward fixes them. One decision. Your life is handled."
@@ -35,21 +35,35 @@
         </div>
       </footer>
     </div>
-    <aside id="proof" class="proof-panel" hidden>
+    <aside
+      id="proof"
+      class="proof-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="proof-title"
+      hidden
+    >
       <div class="proof-head">
         <div>
           <span class="eyebrow">THE WORLD IS SANDBOXED.</span>
-          <h3>The agent isn’t.</h3>
+          <h3 id="proof-title">The agent isn’t.</h3>
         </div>
         <button id="proof-close" aria-label="Close live proof">×</button>
       </div>
       <div id="proof-content"></div>
     </aside>
-    <aside id="constitution" class="proof-panel" hidden>
+    <aside
+      id="constitution"
+      class="proof-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="constitution-title"
+      hidden
+    >
       <div class="proof-head">
         <div>
           <span class="eyebrow">YOUR MANDATE, ENFORCED</span>
-          <h3>Steward Constitution</h3>
+          <h3 id="constitution-title">Steward Constitution</h3>
         </div>
         <button id="constitution-close" aria-label="Close constitution">×</button>
       </div>

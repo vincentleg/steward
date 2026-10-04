@@ -71,3 +71,17 @@ Run the separate public sandbox and the phone gateway. Open `/sandbox/share` at 
 ## Locked checkpoints
 
 `golden-live-v1` preserves the originally verified LIVE implementation. Preserve `.env` and `.data` privately; they are deliberately absent from Git. The original replay video is unchanged. Stop prevents further work; Reset changes the display only.
+
+## Exact stage launch
+
+1. Keep the existing tunnel process alive. Do not generate a different URL casually.
+2. Run `npm start` (private LIVE, port 3000), `npm run sandbox` (port 3003), and `npm run phone:gateway` (port 3002) if they are not already running.
+3. Run `node --env-file-if-exists=.env scripts/create-qr.js`; open the public origin’s `/sandbox/share` on the audience display.
+4. Open `http://localhost:3000` on the presentation laptop. Reset. Confirm “0 / NO DECISIONS NEED YOU.” Keep phone email ready.
+5. Click **See Steward take over**. Explain one event → six consequences → three futures → one decision.
+6. Open the newest approval email on the physical iPhone. Open the plan and tap **Approve Steward’s plan** once. Put the phone down.
+7. Let execution continue. Explain why $412 cash beats the $450 credit. Wait for independent verification and **OUTCOME RESTORED**.
+8. Briefly open Live proof; close with Escape. Display audience QR. Explain travel is one capability of a general outcome core.
+9. If LIVE stalls for 3–5 seconds, Shift+R or Replay. If the local server fails, play the original `docs/replay.webm`. Never debug on stage.
+
+No approval is required for other audience sessions; visitors approve their own synthetic plan in their own browser. Do not expose `.env`, private logs, email recipients or token URLs while presenting.

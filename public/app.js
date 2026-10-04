@@ -30,35 +30,37 @@ const event = (t) => run?.events.find((e) => e.type === t);
 const phase = () =>
   !run
     ? 'calm'
-    : run.events.at(-1)?.type === 'workflow.error'
-      ? 'error'
-      : !has('flight.cancelled')
-        ? 'receiving'
-        : has('exception.resolved')
-          ? 'resolved'
-          : run.stopped
-            ? 'stopped'
-            : has('outcome.verification_started')
-              ? 'verification'
-              : has('refund.confirmed')
-                ? 'refund'
-                : has('rebuttal.sent')
-                  ? 'rebuttal'
-                  : has('offer.evaluated')
-                    ? 'evaluation'
-                    : has('airline.offer_received')
-                      ? 'offer'
-                      : has('approval.received')
-                        ? 'execution'
-                        : has('decision.sent')
-                          ? 'decision'
-                          : has('recommendation.ready')
-                            ? 'options'
-                            : 'bloom';
+    : run.stopped
+      ? 'stopped'
+      : run.events.at(-1)?.type === 'workflow.error'
+        ? 'error'
+        : !has('flight.cancelled')
+          ? 'receiving'
+          : has('exception.resolved')
+            ? 'resolved'
+            : run.stopped
+              ? 'stopped'
+              : has('outcome.verification_started')
+                ? 'verification'
+                : has('refund.confirmed')
+                  ? 'refund'
+                  : has('rebuttal.sent')
+                    ? 'rebuttal'
+                    : has('offer.evaluated')
+                      ? 'evaluation'
+                      : has('airline.offer_received')
+                        ? 'offer'
+                        : has('approval.received')
+                          ? 'execution'
+                          : has('decision.sent')
+                            ? 'decision'
+                            : has('recommendation.ready')
+                              ? 'options'
+                              : 'bloom';
 const title = (label, heading, description = '') =>
   `<div class="section-heading"><div class="eyebrow"><span class="tiny-line"></span>${label}</div><h1>${heading}</h1>${description ? `<p>${description}</p>` : ''}</div>`;
 function calm() {
-  return `<section class="calm scene">${title('PERSONAL OUTCOME RECOVERY', 'Your life is<br><em>handled.</em>', 'Agents execute tasks. Steward restores outcomes.')}<div class="calm-center"><div class="orbit-mark"><span>✳</span></div><div class="calm-status"><span class="status-dot"></span> NO DECISIONS NEED YOU.</div><p>YOUR WORLD IS STABLE</p><button class="primary" id="trigger">See Steward take over <span>↗</span></button><div class="trigger-note">${publicMode ? 'No account. No personal data. No connected accounts.' : 'One event. Six consequences. One decision.'}</div></div><div class="watching-grid">${[
+  return `<section class="calm scene">${title('YOUR WORLD IS STABLE', 'Your life is handled.')}<div class="calm-center"><div class="decision-count" aria-label="Zero decisions">0</div><div class="calm-status">NO DECISIONS NEED YOU.</div><p>YOUR WORLD IS STABLE</p><button class="primary" id="trigger">See Steward take over <span>↗</span></button><div class="trigger-note">${publicMode ? 'No account. No personal data. No connected accounts.' : 'One event. Six consequences. One decision.'}</div></div><div class="watching-grid">${[
     ['01', 'TRAVEL', 'SFO → JFK', '6:40 PM tonight', '↗'],
     ['02', 'CALENDAR', 'Sarah · 9 AM', 'Tomorrow’s priority', '◷'],
     ['03', 'REWARDS', '31,000 miles', 'December trip protected', '✳'],
@@ -153,7 +155,7 @@ function resolved() {
     )
     .join(
       '',
-    )}</div><div class="verification-summary">${run.outcome?.verified ? '6 outcome checks passed. Action receipts independently verified.' : 'Booking, calendar, notification and refund confirmed.'}</div><div class="final-line"><span>ONE HUMAN DECISION.</span><b>Everything else, handled.</b></div><button class="text-button" id="again">Return to calm <span>↗</span></button></section>`;
+    )}</div><div class="verification-summary">${run.outcome?.verified ? '6 outcome checks passed. Action receipts independently verified.' : 'Booking, calendar, notification and refund confirmed.'}</div><div class="handled-tally"><div><strong>6</strong><span>consequences</span></div><div><strong>${run.events.filter((e) => ['booking.completed', 'calendar.updated', 'sarah.notified', 'refund.requested', 'offer.evaluated', 'rebuttal.sent', 'refund.confirmed', 'outcome.verified'].includes(e.type)).length}</strong><span>verified milestones</span></div><div><strong>1</strong><span>human decision</span></div></div><div class="final-line"><span>ONE HUMAN DECISION.</span><b>Everything else, handled.</b></div><button class="text-button" id="again">Return to calm <span>↗</span></button></section>`;
 }
 function render() {
   document.querySelector('#mode').textContent = !connected
@@ -197,6 +199,7 @@ function render() {
     bind();
   } else if (['bloom', 'execution', 'decision'].includes(p)) {
     main.innerHTML = { bloom, execution, decision }[p]();
+    main.querySelector('.scene')?.classList.add('refreshing');
     bind();
   }
   renderProof();
@@ -335,19 +338,51 @@ async function poll() {
 }
 document.querySelector('#replay').addEventListener('click', () => start('replay'));
 document.querySelector('#reset').addEventListener('click', reset);
+let drawerTrigger;
+function toggleDrawer(id, force) {
+  const panel = document.querySelector('#' + id);
+  const opening = force ?? panel.hidden;
+  if (opening) {
+    drawerTrigger = document.activeElement;
+    for (const other of ['proof', 'constitution'])
+      document.querySelector('#' + other).hidden = other !== id;
+    panel.hidden = false;
+    document.querySelector('.app-shell').inert = true;
+    panel.querySelector('button').focus();
+  } else {
+    panel.hidden = true;
+    document.querySelector('.app-shell').inert = false;
+    drawerTrigger?.focus();
+  }
+}
 document.querySelector('#proof-toggle').addEventListener('click', () => {
-  document.querySelector('#proof').hidden = !document.querySelector('#proof').hidden;
+  toggleDrawer('proof');
   renderProof();
 });
 document
   .querySelector('#proof-close')
-  .addEventListener('click', () => (document.querySelector('#proof').hidden = true));
+  .addEventListener('click', () => toggleDrawer('proof', false));
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    document.querySelector('#proof').hidden = true;
-    document.querySelector('#constitution').hidden = true;
+  const panel = ['proof', 'constitution']
+    .map((id) => document.querySelector('#' + id))
+    .find((p) => !p.hidden);
+  if (panel && e.key === 'Escape') {
+    toggleDrawer(panel.id, false);
+    return;
   }
-  if (e.key.toLowerCase() === 'r' && e.shiftKey) start('replay');
+  if (panel && e.key === 'Tab') {
+    const items = [...panel.querySelectorAll('button, a[href], [tabindex="0"]')];
+    const first = items[0],
+      last = items.at(-1);
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last?.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first?.focus();
+    }
+  }
+  if (!panel && !publicMode && e.key.toLowerCase() === 'r' && e.shiftKey) start('replay');
 });
 if (publicMode) {
   document.querySelector('#replay').hidden = true;
@@ -395,7 +430,7 @@ document.querySelector('#stop').addEventListener('click', async () => {
 });
 document.querySelector('#constitution-toggle').addEventListener('click', async () => {
   const panel = document.querySelector('#constitution');
-  panel.hidden = !panel.hidden;
+  toggleDrawer('constitution');
   if (panel.hidden) return;
   try {
     const c =
@@ -423,7 +458,7 @@ document.querySelector('#constitution-toggle').addEventListener('click', async (
 });
 document
   .querySelector('#constitution-close')
-  .addEventListener('click', () => (document.querySelector('#constitution').hidden = true));
+  .addEventListener('click', () => toggleDrawer('constitution', false));
 
 function error() {
   return `<section class="scene">${title('OUTCOME NOT YET VERIFIED', 'Steward has<br><em>paused safely.</em>', publicMode ? 'Start a fresh private world to try again.' : 'Approved work and completed actions are preserved. Replay is ready.')}<button class="primary" id="recover">${publicMode ? 'Start fresh world' : 'Switch to replay'} <span>↗</span></button></section>`;

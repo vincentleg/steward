@@ -38,7 +38,7 @@ if (
   throw Error('Public verification failed');
 await page.screenshot({ path: 'docs/public-restored.png' });
 await context.close();
-await page.video().saveAs('docs/public-demo.webm');
+await page.video().saveAs(process.env.PUBLIC_VIDEO || 'docs/public-demo.webm');
 await browser.close();
 writeFileSync(
   '.data/public-smoke.json',

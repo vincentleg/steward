@@ -1,9 +1,12 @@
 import { chromium } from 'playwright';
 import ffmpeg from 'ffmpeg-static';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-const dir = '.data/submission';
+const dir = '.data/submission-v3';
+const output = process.env.SUBMISSION_OUTPUT || 'docs/submission-candidate.mp4';
+const input = process.env.PUBLIC_VIDEO || 'docs/public-demo-v3.webm';
 mkdirSync(dir, { recursive: true });
+const displayFont = readFileSync('public/fonts/manrope-500.woff2').toString('base64');
 const parts = [
   {
     name: 'opening',
@@ -57,7 +60,7 @@ for (const [i, p] of parts.entries()) {
     run(ffmpeg, [
       '-y',
       '-i',
-      'docs/public-demo.webm',
+      input,
       '-i',
       `${stem}.aiff`,
       '-vf',
@@ -81,8 +84,9 @@ for (const [i, p] of parts.entries()) {
     ]);
   else {
     await page.setContent(
-      `<html><body style="margin:0;background:#f4f5ef;color:#163d31;font-family:Arial;padding:95px;box-sizing:border-box;height:900px"><div style="font-size:22px;letter-spacing:8px">STEWARD</div><div style="margin-top:110px;font-size:13px;letter-spacing:3px;color:#537063">${p.label}</div><h1 style="font-size:76px;line-height:1.1;font-weight:500;margin:28px 0"><span>${p.title}</span></h1><p style="font-size:23px;line-height:1.8;color:#597067">${p.copy}</p><div style="position:absolute;bottom:55px;font-size:13px;letter-spacing:2px">WHEN PLANS BREAK, STEWARD FIXES THEM.</div></body></html>`,
+      `<html><style>@font-face{font-family:Steward;src:url(data:font/woff2;base64,${displayFont})}em{font-style:normal;color:#3450df}</style><body style="margin:0;background:#f6f7fb;color:#161b27;font-family:Steward,Arial;padding:95px;box-sizing:border-box;height:900px"><div style="font-size:22px;letter-spacing:8px">STEWARD</div><div style="margin-top:110px;font-size:13px;letter-spacing:3px;color:#3450df">${p.label}</div><h1 style="font-size:76px;line-height:1.1;font-weight:500;margin:28px 0"><span>${p.title}</span></h1><p style="font-size:23px;line-height:1.8;color:#606b7b">${p.copy}</p><div style="position:absolute;bottom:55px;font-size:13px;letter-spacing:2px">WHEN PLANS BREAK, STEWARD FIXES THEM.</div></body></html>`,
     );
+    await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: `${stem}.png` });
     run(ffmpeg, [
       '-y',
@@ -125,9 +129,9 @@ run(ffmpeg, [
   'copy',
   '-movflags',
   '+faststart',
-  'docs/submission-demo.mp4',
+  output,
 ]);
-const inspect = spawnSync(ffmpeg, ['-i', 'docs/submission-demo.mp4'], { encoding: 'utf8' }).stderr;
+const inspect = spawnSync(ffmpeg, ['-i', output], { encoding: 'utf8' }).stderr;
 const duration = inspect.match(/Duration: (\d+):(\d+):([\d.]+)/);
 const seconds = +duration[1] * 3600 + +duration[2] * 60 + +duration[3];
 if (seconds > 180) throw Error('Submission exceeds three minutes');

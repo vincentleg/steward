@@ -72,6 +72,15 @@ test('replay resolves without approval and uses the same event schema', async ({
   await page.getByRole('button', { name: 'Live proof' }).click();
   await expect(page.locator('.proof-meta')).toContainText('REPLAY');
   await expect(page.locator('.proof-events')).toContainText('approval.received');
+  const completed = await page.evaluate(() => localStorage.getItem('steward-run'));
+  await page.getByRole('button', { name: 'Close live proof' }).click();
+  await page.getByRole('button', { name: 'Replay', exact: false }).click();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('steward-run')))
+    .not.toBe(completed);
+  await expect(page.getByText('OUTCOME RESTORED ✓', { exact: true })).toBeVisible({
+    timeout: 60000,
+  });
 });
 test('mobile calm layout fits the viewport', async ({ browser }) => {
   const context = await browser.newContext({ ...devices['iPhone 13'] });
@@ -80,4 +89,28 @@ test('mobile calm layout fits the viewport', async ({ browser }) => {
   await expect(page.getByRole('button', { name: 'See Steward take over' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await context.close();
+});
+
+test('stopped transport restores a stopped screen before any cancellation event', async ({
+  page,
+}) => {
+  const id = '00000000-0000-4000-8000-000000000001';
+  await page.route(`**/api/runs/${id}`, (route) =>
+    route.fulfill({
+      json: {
+        id,
+        mode: 'live',
+        state: 'STOPPED',
+        stopped: true,
+        events: [{ type: 'workflow.stopped', at: new Date().toISOString(), data: {} }],
+        actions: {},
+      },
+    }),
+  );
+  await page.goto('/');
+  await page.evaluate((id) => localStorage.setItem('steward-run', id), id);
+  await page.reload();
+  await expect(page.getByText('AUTHORITY WITHDRAWN', { exact: true })).toBeVisible();
+  await expect(page.getByText('Waiting for the event.', { exact: false })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeHidden();
 });

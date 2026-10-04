@@ -201,7 +201,7 @@ const server = http.createServer(async (req, res) => {
     json(res, 500, { error: 'Request could not be processed' });
   }
 });
-server.listen(port, '0.0.0.0', () => {
+server.listen(port, process.env.BIND_HOST || '127.0.0.1', () => {
   console.log(
     `STEWARD ready on http://localhost:${port} · AgentMail ${mailConfigured() ? 'configured' : 'not configured'}`,
   );

@@ -29,3 +29,7 @@ Record desktop plus an actual phone insert. The included silent replay is a stag
 ## Reproducible generated cut
 
 `node --env-file-if-exists=.env scripts/public-smoke.js` records the complete public HTTPS flow and verifies its final state. `node scripts/build-submission.js` creates a narrated MP4 using local macOS speech and the bundled open-source encoder. It rejects a duration over 180 seconds. Neither script uses a paid service. The original `docs/replay.webm` is never overwritten.
+
+## Final design candidate
+
+`docs/submission-candidate.mp4` is the redesigned 150.9-second cut. It uses `docs/public-demo-v3.webm`, captured through the real public HTTPS URL. The protected `docs/submission-demo.mp4` and original replay are unchanged. The candidate retains explicit sandbox labeling and separately verified physical-iPhone LIVE evidence. Default rendering now writes the candidate, never the protected cut.
