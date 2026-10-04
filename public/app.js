@@ -1,4 +1,11 @@
 const publicMode = document.body.dataset.mode === 'public';
+let demo = { active: false };
+if (publicMode) {
+  try {
+    demo = JSON.parse(sessionStorage.getItem('steward-autonomous-demo') || '{"active":false}');
+    demo.lastTick = Date.now();
+  } catch {}
+}
 const storage = publicMode ? sessionStorage : localStorage;
 const runKey = publicMode ? 'steward-public-run' : 'steward-run';
 const api = publicMode ? '/sandbox/api/sessions' : '/api/runs';
@@ -60,7 +67,7 @@ const phase = () =>
 const title = (label, heading, description = '') =>
   `<div class="section-heading"><div class="eyebrow"><span class="tiny-line"></span>${label}</div><h1>${heading}</h1>${description ? `<p>${description}</p>` : ''}</div>`;
 function calm() {
-  return `<section class="calm scene">${title('YOUR WORLD IS STABLE', 'Your life is handled.')}<div class="calm-center"><div class="decision-count" aria-label="Zero decisions">0</div><div class="calm-status">NO DECISIONS NEED YOU.</div><p>YOUR WORLD IS STABLE</p><button class="primary" id="trigger">See Steward take over <span>↗</span></button><div class="trigger-note">${publicMode ? 'No account. No personal data. No connected accounts.' : 'One event. Six consequences. One decision.'}</div></div><div class="watching-grid">${[
+  return `<section class="calm scene">${title('YOUR WORLD IS STABLE', 'Your life is handled.')}<div class="calm-center"><div class="decision-count" aria-label="Zero decisions">0</div><div class="calm-status">NO DECISIONS NEED YOU.</div><p>YOUR WORLD IS STABLE</p><button class="primary" id="trigger">See Steward take over <span>↗</span></button>${publicMode ? '<button class="text-button explore-manual" id="explore-manual">Explore manually ↗</button>' : ''}<div class="trigger-note">${publicMode ? 'No account. No personal data. No connected accounts.' : 'One event. Six consequences. One decision.'}</div></div><div class="watching-grid">${[
     ['01', 'TIME', '9 AM commitment', 'Tomorrow’s priority', '◷'],
     ['02', 'PEOPLE', 'Sarah', 'A commitment to keep', '◎'],
     ['03', 'RESOURCES', '31,000 miles', 'December trip protected', '✳'],
@@ -189,6 +196,14 @@ function renderStory(p) {
   document.querySelector('#story-text').textContent = text;
 }
 function render() {
+  if (publicMode) {
+    demoControls();
+    if (demo.active && demo.paused) return;
+    if (demo.active && demo.stage !== 'travel') {
+      renderDemoScene();
+      return;
+    }
+  }
   document.querySelector('#mode').textContent = !connected
     ? 'RECONNECTING · STATE PRESERVED'
     : run?.mode === 'replay'
@@ -244,7 +259,10 @@ function render() {
         : 'SANDBOX WORLD · LIVE AGENT';
 }
 function bind() {
-  document.querySelector('#trigger')?.addEventListener('click', () => start('live'));
+  document.querySelector('#explore-manual')?.addEventListener('click', () => start('live'));
+  document
+    .querySelector('#trigger')
+    ?.addEventListener('click', () => (publicMode ? launchDemo() : start('live')));
   document.querySelector('#again')?.addEventListener('click', reset);
   document
     .querySelector('#recover')
@@ -306,6 +324,9 @@ async function start(mode) {
   }
 }
 function reset() {
+  demo = { active: false };
+  saveDemo();
+  document.querySelector('#demo-controls')?.setAttribute('hidden', '');
   run = null;
   storage.removeItem(runKey);
   lastPhase = '';
@@ -422,6 +443,311 @@ if (publicMode) {
   document.querySelector('.header-center').innerHTML =
     '<span class="status-dot"></span> SYNTHETIC WORLD · PRIVATE SESSION';
 }
+const demoScenes = [
+  [
+    'SF TECH WEEK',
+    'Your calendar stores events.',
+    'Steward understands why they matter.',
+    [
+      '6:00 PM · AI infrastructure · Confirmed',
+      '6:30 PM · Founder event · Waitlisted',
+      '8:00 PM · Investor event · Confirmed',
+    ],
+    5,
+  ],
+  [
+    'WORLD STATE CHANGED',
+    '6:47 PM. Waitlist cleared.',
+    'Steward re-evaluates the evening.',
+    [
+      'Event value · People · User goals',
+      'Travel time · Commitments · Opportunity cost',
+      'Next event · Reversibility',
+    ],
+    5,
+  ],
+  [
+    'CALENDAR RE-OPTIMIZATION',
+    '12 → 4 → 1',
+    'Consequences → possible plans → one decision.',
+    [
+      'Leave event A early → Attend founder event B',
+      'Keep the 8 PM commitment',
+      '✓ 22-minute travel assumed feasible',
+    ],
+    6,
+  ],
+  [
+    'MONEY',
+    'An unwanted $249 renewal.',
+    'Steward protects value, not just balances.',
+    [
+      'Usage + preference checked',
+      'Refund eligibility evaluated',
+      '✓ Low-risk resolution simulated',
+    ],
+    3,
+  ],
+  [
+    'PURCHASES',
+    'The delivery failed.',
+    'The purchase wasn’t the goal. Having the item was.',
+    [
+      'Important item needed tomorrow',
+      'Replacement arrives tonight',
+      '✓ Original refund path prepared',
+    ],
+    3,
+  ],
+  [
+    'BENEFITS / RIGHTS',
+    '$300 expires tomorrow.',
+    'Steward watches for value you would have lost.',
+    [
+      'Value at risk detected',
+      'Eligibility + use options checked',
+      '✓ Value preservation simulated',
+    ],
+    3,
+  ],
+  [
+    'ADMIN',
+    'A deadline. Four tasks.',
+    'Steward turns admin into decisions.',
+    [
+      'Form · Document · Payment · Approval',
+      'Everything within authority prepared',
+      '1 decision, rather than 4 tasks · Illustration',
+    ],
+    3,
+  ],
+  [
+    'WORK',
+    '2:00 → 3:30 PM',
+    'One change. Every dependency updated.',
+    ['Travel · Preparation · Next meeting', 'People · Deadline', '✓ Safe replanning simulated'],
+    3,
+  ],
+  [
+    'HOME',
+    'Internet out. Call in 45 min.',
+    'Steward protects the outcome, not the device.',
+    [
+      'Outage + recovery estimate checked',
+      'Hotspot · Workspace · Travel time',
+      '✓ Backup plan prepared',
+    ],
+    3,
+  ],
+  [
+    'PEOPLE',
+    'Dinner delayed 45 minutes.',
+    'Context moves with the plan.',
+    [
+      'Reservation · Travel · Next commitment',
+      'Conflict detected · New plan prepared',
+      '✓ Communication ready',
+    ],
+    3,
+  ],
+  [
+    'OPPORTUNITIES',
+    'An invitation. Limited capacity.',
+    'Allocate your life around what matters.',
+    [
+      'Strategic relevance · People · Goals',
+      'Calendar · Travel · Commitments',
+      '✓ High-value decision prepared · Illustration',
+    ],
+    3,
+  ],
+  [
+    'ONE CENTRAL INTELLIGENCE',
+    'These aren’t ten agents.',
+    'They’re one life.',
+    [
+      'Time · Money · Travel · People · Work',
+      'Opportunities · Purchases · Benefits · Home · Admin',
+      'One world state · One memory · One Constitution',
+    ],
+    6,
+  ],
+  [
+    'THE STEWARD LOOP',
+    'Sense. Think. Evaluate.',
+    'Watch. Act. Resolve. Defend.',
+    [
+      'Perceive → Model → Predict → Protect',
+      'Plan → Act → Negotiate',
+      'Verify → Learn → Continue watching',
+    ],
+    5,
+  ],
+  [
+    'PERSONAL OUTCOME RECOVERY',
+    'Chatbots answer. Agents act.',
+    'Steward restores outcomes.',
+    [],
+    6,
+  ],
+  [
+    'STEWARD CONSTITUTION',
+    'Maximum intelligence.',
+    'Minimum necessary authority.',
+    [
+      'GREEN · Observe / simulate / prepare',
+      'YELLOW · Pre-authorized reversible actions',
+      'RED · Human approval · BLACK · Never escalate permissions',
+    ],
+    7,
+  ],
+  [
+    'PRIVACY BY DESIGN',
+    'Your world remains yours.',
+    'Minimum necessary data. Explicit authority.',
+    [
+      'Scoped, compartmentalized access',
+      'Synthetic public demo · No account required',
+      'No personal data required',
+    ],
+    5,
+  ],
+  [
+    'YOUR WORLD IS STABLE',
+    '0',
+    'DECISIONS NEED YOU',
+    ['Steward absorbed the complexity.', 'One human decision. Everything else, handled.'],
+    6,
+  ],
+  [
+    'STEWARD',
+    'Your life is handled.',
+    'The operations team for your life.',
+    ['Sense · Think · Evaluate · Watch · Act · Resolve · Defend'],
+    5,
+  ],
+];
+function saveDemo() {
+  if (publicMode) sessionStorage.setItem('steward-autonomous-demo', JSON.stringify(demo));
+}
+function demoControls() {
+  let bar = document.querySelector('#demo-controls');
+  if (!bar) {
+    bar = document.createElement('nav');
+    bar.id = 'demo-controls';
+    bar.setAttribute('aria-label', 'Demo presentation controls');
+    document.querySelector('#story').before(bar);
+  }
+  bar.hidden = !demo.active;
+  if (!demo.active) return;
+  bar.innerHTML = `<span><b>AUTONOMOUS DEMO</b> · ${demo.stage === 'travel' ? 'FUNCTIONAL SANDBOX' : demo.stage === 'intro' ? 'SYNTHETIC WORLD' : 'CAPABILITY SIMULATION'}</span><div><button id="demo-pause" title="Pause presentation; an approved backend workflow continues safely">${demo.paused ? 'Resume' : 'Pause'}</button><button id="demo-restart">Restart</button><button id="demo-exit">Exit</button></div>`;
+  document.querySelector('#demo-pause').onclick = () => {
+    demo.paused = !demo.paused;
+    demo.lastTick = Date.now();
+    saveDemo();
+    lastRevision = '';
+    render();
+  };
+  document.querySelector('#demo-restart').onclick = async () => {
+    await exitDemo(true);
+    launchDemo();
+  };
+  document.querySelector('#demo-exit').onclick = () => exitDemo(true);
+}
+async function exitDemo(stopRun = false) {
+  if (stopRun && run && run.state !== 'RESOLVED' && !run.stopped) {
+    try {
+      await apiFetch(`${api}/${run.id}/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+    } catch {
+      toast('Presentation exited. Backend status remains available in Live proof.');
+    }
+  }
+  demo = { active: false };
+  saveDemo();
+  document.querySelector('#demo-controls')?.setAttribute('hidden', '');
+  reset();
+}
+function launchDemo() {
+  if (pending || demo.active) return;
+  demo = {
+    active: true,
+    stage: 'intro',
+    index: 0,
+    elapsed: 0,
+    paused: false,
+    lastTick: Date.now(),
+  };
+  saveDemo();
+  lastRevision = '';
+  render();
+}
+function renderDemoScene() {
+  const intro = demo.stage === 'intro';
+  const s = intro
+    ? [
+        'PERSONAL WORLD STATE',
+        'Your world is stable.',
+        'One intelligence. Your whole life.',
+        [
+          'TIME · MONEY · TRAVEL · COMMITMENTS',
+          'PEOPLE · OPPORTUNITIES · PURCHASES · BENEFITS',
+          'HOME · ADMIN · WORK · RESOURCES',
+        ],
+        7,
+      ]
+    : demoScenes[demo.index];
+  if (!s) return;
+  const key = `${demo.stage}:${demo.index}`;
+  if (document.querySelector('.demo-scene')?.dataset.key === key) return;
+  document.querySelector('#story-stage').textContent = intro
+    ? 'STEWARD IS WATCHING'
+    : demo.index <= 10
+      ? 'CAPABILITY SIMULATION · PRODUCT VISION'
+      : 'ONE STEWARD CORE';
+  document.querySelector('#story-text').textContent = s[2];
+  main.innerHTML = `<section class="scene demo-scene ${demo.index >= 13 ? 'demo-quiet' : ''}" data-key="${key}"><div class="eyebrow">${s[0]}</div><h1>${s[1]}</h1><p class="demo-subtitle">${s[2]}</p>${intro ? '<div class="demo-zero">0 <small>DECISIONS NEED YOU</small></div>' : ''}<div class="demo-facts">${s[3].map((text, i) => `<div style="--order:${i}">${text}</div>`).join('')}</div><div class="demo-truth">${intro ? 'Synthetic Personal World State · Travel is today’s functional capability' : demo.index <= 10 ? 'CAPABILITY SIMULATION · No connected integration or real transaction' : 'One intelligence. Explicit authority. Many capabilities.'}</div></section>`;
+}
+function demoTick() {
+  if (!demo.active || demo.paused) return;
+  const now = Date.now();
+  const delta = Math.min(1, (now - (demo.lastTick || now)) / 1000);
+  demo.lastTick = now;
+  if (demo.stage === 'travel') {
+    if (phase() === 'resolved') {
+      demo.elapsed = (demo.elapsed || 0) + delta;
+      if (demo.elapsed >= 8) {
+        demo.stage = 'vision';
+        demo.index = 0;
+        demo.elapsed = 0;
+        lastRevision = '';
+        render();
+      }
+    }
+  } else {
+    demo.elapsed = (demo.elapsed || 0) + delta;
+    const duration = demo.stage === 'intro' ? 7 : demoScenes[demo.index]?.[4] || 3;
+    if (demo.elapsed >= duration) {
+      demo.elapsed = 0;
+      if (demo.stage === 'intro') {
+        demo.stage = 'travel';
+        start('live');
+      } else if (demo.index + 1 < demoScenes.length) demo.index++;
+      else {
+        demo.active = false;
+        reset();
+      }
+      lastRevision = '';
+      render();
+    }
+  }
+  saveDemo();
+}
+
+setInterval(demoTick, 200);
 render();
 await poll();
 setInterval(poll, publicMode ? 1100 : 650);
