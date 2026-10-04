@@ -1,6 +1,8 @@
 # Public cloud deployment (Phase 2.5)
 
-Provider: Render Free web service, Hobby workspace, **no payment method on file**. Do not use a workspace with a saved payment method: included bandwidth/build overages can be billed there. Without a payment method, Render suspends service/builds at free limits instead. Never upgrade, attach a disk/database or add a payment method as part of this deployment.
+Public URL: **https://steward-public.onrender.com**
+
+Provider: Render Free web service, Hobby workspace, **no payment method on file** (confirmed by Vincent before provisioning). Do not use a workspace with a saved payment method: included bandwidth/build overages can be billed there. Without a payment method, Render suspends service/builds at free limits instead. Never upgrade, attach a disk/database or add a payment method as part of this deployment.
 
 Official free-tier policy: https://render.com/docs/free
 
@@ -45,3 +47,17 @@ The production check exercises two independent desktop/mobile sessions, real bac
 Final external gate: open the stable URL on a physical iPhone over cellular, trigger the scenario and approve once. This public browser-approval gate is separate from the pending private AgentMail email/iPhone gate.
 
 No Phase 3 features, final video or submission are included.
+
+## Verified release evidence
+
+Cloud application deployment: `c8d039c`, service `steward-public`, region Oregon. Render reported the deployment live. API service configuration verified `plan=free`, one instance, previews off, auto-deploy off. HTTP redirects to HTTPS. No payment method was added, no paid resource was provisioned, and no new monetary charge was incurred.
+
+32 automated tests passed. All 10 browser regression tests passed. Actual production HTTPS E2E passed with simultaneous independent desktop and mobile sessions, backend approval, execution, voucher evaluation, rebuttal, $412 cash refund and verified restoration. Mid-workflow and completed reloads passed; duplicate approval produced one approval and one booking/refund. Cross-session bearer misuse, unauthorized session reads, private LIVE routes, arbitrary commands, malformed/oversized JSON and public-asset secret scanning passed. Evidence is stored privately in `.data/production-e2e.json`.
+
+Physical iPhone on cellular: **manual gate pending**, not claimed tested. Open the URL, tap See Steward take over, approve once and wait for Outcome Restored.
+
+Private AgentMail email/iPhone Phase 2 gate: still pending after the provider spam allowance restriction. Cloud deployment does not use AgentMail and does not change that gate.
+
+All protected video hashes remain unchanged. Existing local servers/tunnel are retained. Fly state was untouched after the provider was ruled out. Phase 3 has not begun; no final video or hackathon submission was made.
+
+The release checkpoint may include documentation commits after `c8d039c`; these do not alter the running application. To redeploy, explicitly select the checkpoint commit using the existing Free service. Do not create another service, switch plans, enable previews or add payment information.

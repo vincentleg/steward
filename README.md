@@ -10,7 +10,11 @@ Steward models what matters, detects deviations, compares possible futures, comp
 
 ![Steward decision card](docs/decision.png)
 
-[Watch the redesigned 2:31 demo](docs/submission-candidate.mp4) · [Architecture](docs/ARCHITECTURE.md) · [Stage runbook](docs/DEMO.md) · [Submission checklist](docs/SUBMISSION-CHECKLIST.md)
+[Protected fallback demo (2:31)](docs/submission-candidate.mp4) · [Architecture](docs/ARCHITECTURE.md) · [Stage runbook](docs/DEMO.md) · [Submission checklist](docs/SUBMISSION-CHECKLIST.md)
+
+## Try the public sandbox
+
+**https://steward-public.onrender.com** — no account, email or connected services. Synthetic world, real server-side workflow, browser approval and verified recovery. Private LIVE mode is not exposed. The Free service may take about a minute to wake after inactivity; anonymous sessions reset on server restart. [Deployment and verification](docs/DEPLOYMENT.md).
 
 ## Run
 
