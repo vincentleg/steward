@@ -1,3 +1,4 @@
+import { StewardCore } from './steward.js';
 import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 export class EventStore {
@@ -6,18 +7,28 @@ export class EventStore {
     this.seed = seed;
     this.path = path;
     this.runs = new Map();
+    this.core = new StewardCore();
     if (path) {
       mkdirSync(path.slice(0, path.lastIndexOf('/')) || '.', { recursive: true });
       try {
-        this.runs = new Map(JSON.parse(readFileSync(path, 'utf8')).map((r) => [r.id, r]));
+        const snapshot = JSON.parse(readFileSync(path, 'utf8'));
+        const runs = Array.isArray(snapshot) ? snapshot : snapshot.runs;
+        if (!Array.isArray(runs)) throw Error('Malformed persisted state');
+        this.runs = new Map(runs.map((r) => [r.id, r]));
+        this.core = new StewardCore(Array.isArray(snapshot) ? {} : snapshot.core);
       } catch (e) {
         if (e.code !== 'ENOENT') throw e;
       }
     }
+    for (const run of this.runs.values()) this.core.attach(run);
   }
   save() {
     if (this.path) {
-      writeFileSync(`${this.path}.tmp`, JSON.stringify([...this.runs.values()]));
+      writeFileSync(
+        `${this.path}.tmp`,
+        JSON.stringify({ version: 2, runs: [...this.runs.values()], core: this.core.snapshot() }),
+        { mode: 0o600 },
+      );
       renameSync(`${this.path}.tmp`, this.path);
     }
   }
@@ -32,6 +43,7 @@ export class EventStore {
       actions: {},
       messages: [],
     };
+    this.core.attach(run);
     this.runs.set(run.id, run);
     this.save();
     return run;
@@ -44,6 +56,7 @@ export class EventStore {
       at: new Date().toISOString(),
       data,
     };
+    this.core.observe(run, event);
     run.events.push(event);
     run.state = state;
     this.save();

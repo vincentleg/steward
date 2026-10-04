@@ -24,6 +24,8 @@ export class OutcomeWorkflow {
     return !run.stopped && (!run.expiresAt || Date.parse(run.expiresAt) > Date.now());
   }
   emit(run, type, data = {}, state) {
+    if (this.capability.worldState)
+      this.store.core.contribute(run, this.capability.worldState(run));
     const e = this.store.emit(run, type, data, state);
     this.onEvent(run, e);
     return e;
@@ -46,6 +48,7 @@ export class OutcomeWorkflow {
         if (run.events.some((e) => e.type === type)) continue;
         await delay(ms * this.pace);
         if (!this.active(run)) return;
+        this.store.core.authorize(run, this.capability, type, this.capability.authority(type));
         authorize(this.capability.authority(type), run);
         if (type === 'decision.sent') {
           this.emit(run, type, { delivery: 'preparing' }, state);
@@ -62,7 +65,7 @@ export class OutcomeWorkflow {
         } else {
           this.capability.apply(run, type, data);
           if (type === this.capability.analysisSteps[0][0] && run.personalWorld) {
-            run.deviation = deviation({ type }, run.personalWorld);
+            run.deviation ||= deviation({ type }, run.personalWorld);
             run.personalWorld.observation = 'deviated';
           }
           this.emit(run, type, data, state);
@@ -112,6 +115,7 @@ export class OutcomeWorkflow {
         if (run.events.some((e) => e.type === type)) continue;
         await delay(ms * this.pace);
         if (!this.active(run)) return;
+        this.store.core.authorize(run, this.capability, type, this.capability.authority(type));
         const authority = authorize(this.capability.authority(type), run);
         this.capability.apply(run, type, data);
         if (this.capability.shouldCommunicate?.(type)) await this.message(run, type);
@@ -119,14 +123,6 @@ export class OutcomeWorkflow {
           run.outcome = this.capability.verify(run);
           this.emit(run, 'outcome.verified', run.outcome);
           if (!run.outcome.verified) throw Error('Outcome verification failed');
-          if (run.personalWorld) {
-            run.personalWorld.observation = 'stable';
-            run.personalWorld.memory.push({
-              kind: 'historical-observation',
-              value: 'Authorized recovery verified',
-              at: run.outcome.at,
-            });
-          }
         }
         this.emit(run, type, { ...data, authority: authority.level }, state);
       }

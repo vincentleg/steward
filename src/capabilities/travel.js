@@ -1,3 +1,5 @@
+import { impactGraph, detectDeviation } from '../core/impact.js';
+import { compressDecision } from '../core/intelligence.js';
 import { context, evaluateRecovery, evaluateOffer, flightInventory } from '../domain.js';
 import { airlineCommand, lifeCommand } from '../simulator.js';
 import { personalWorld, verifyOutcome } from '../core/world.js';
@@ -67,6 +69,10 @@ export function executionSteps(run) {
 
 export const travelCapability = {
   id: 'travel-disruption',
+  authorization: {
+    spendingLimit: 504,
+    costs: { 'booking.started': 504, 'booking.completed': 504 },
+  },
   resolutionEvent: 'exception.resolved',
   shouldCommunicate: (type) => type === 'sarah.notified',
   seed(mode) {
@@ -139,7 +145,35 @@ export const travelCapability = {
     return { authority: 'BLACK' };
   },
   apply(run, type, data) {
-    if (type === 'flight.cancelled') airlineCommand(run, 'CANCEL_FLIGHT');
+    if (type === 'flight.cancelled') {
+      airlineCommand(run, 'CANCEL_FLIGHT');
+      const contextId = run.representation.id;
+      run.deviation = detectDeviation({
+        id: `deviation:${run.id}`,
+        contextId,
+        intended: { transportAvailable: true },
+        observed: { transportAvailable: false },
+        evidenceIds: ['flight.cancelled'],
+      });
+      const domains = ['travel', 'calendar', 'people', 'money', 'rewards', 'rights'];
+      run.impactGraph = impactGraph({
+        contextId,
+        sourceId: 'cancellation',
+        nodes: ['cancellation', ...domains].map((id) => ({ id, contextId })),
+        edges: domains.map((to) => ({ from: 'cancellation', to })),
+      });
+      run.compression = compressDecision({
+        impacts: run.impactGraph,
+        futures: run.decision.futures,
+        actions: [
+          {
+            id: 'recovery',
+            requiresApproval: true,
+            reason: 'Authorize the $504 booking; $92 net after refund',
+          },
+        ],
+      });
+    }
     const commands = {
       'booking.completed': 'ACCEPT_BOOKING',
       'refund.requested': 'RECEIVE_REFUND_REQUEST',
@@ -162,6 +196,39 @@ export const travelCapability = {
     if (life[type]) lifeCommand(run, life[type]);
     if (type === 'booking.completed') run.actions.booking = { status: 'completed', ...data };
     if (type === 'refund.confirmed') run.actions.refund = { status: 'completed', ...data };
+  },
+  worldState(run) {
+    return {
+      people: [
+        {
+          id: 'sarah',
+          relationship: 'meeting counterpart',
+          notified: (run.world?.people.sarahInbox.length || 0) > 0,
+        },
+      ],
+      time: [
+        {
+          id: 'meeting',
+          startsAt: run.context.meeting.startsAt,
+          status: run.world?.calendar.status || 'scheduled',
+        },
+      ],
+      travel: [{ id: 'trip', route: 'SFO-JFK', status: run.airline?.state || 'SCHEDULED' }],
+      money: [
+        {
+          id: 'booking-payment',
+          charges: run.world?.payments.charges || [],
+          refunds: run.world?.payments.refunds || [],
+        },
+      ],
+      rights: [{ id: 'refund', amount: 412, source: 'Seeded cancellation refund condition' }],
+      counterparties: [{ id: 'sandbox-airline', kind: 'airline' }],
+      observedState: {
+        transportAvailable: Boolean(run.actions.booking),
+        meetingProtected: run.world?.calendar.status === 'safe',
+        cashRefundConfirmed: Boolean(run.actions.refund),
+      },
+    };
   },
   verify(run) {
     return verifyOutcome(run, [

@@ -34,3 +34,7 @@ Memory should distinguish explicit stable preferences, temporary preferences, ru
 Free gets the intelligence; premium gets more leverage. A future free product should retain the core world model, Constitution and useful outcome recovery. Premium expands frequency, connectors, monitoring depth, memory, simultaneous resolutions, compute and execution capacity. Pro can support professional contexts; enterprise adds delegated organization authority. No pricing, paid tier or multi-domain service is implemented.
 
 Provider neutrality is essential: commissions must not change the optimization target away from the represented person. Potential business models monetize execution and resolution, rather than advice. Subscription, recovery fees and transaction economics remain hypotheses.
+
+## Phase 2 core foundation
+
+The development architecture now has a persistent, context-scoped `StewardCore`, generic future/value/impact/memory/time contracts, and explicit principal/authority boundaries. See [PHASE-2.md](PHASE-2.md) for implemented behavior, migration and rollback instructions, validation status and future-only capabilities. The protected competition release remains independently recoverable.

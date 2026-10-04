@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-const runs = JSON.parse(readFileSync('.data/runs.json', 'utf8'))
+const snapshot = JSON.parse(readFileSync('.data/runs.json', 'utf8'));
+const runs = (Array.isArray(snapshot) ? snapshot : snapshot.runs)
   .filter((r) => r.mode === 'live' && r.delivery?.channel === 'email')
   .slice(-2);
 const browser = await chromium.launch({ headless: false });

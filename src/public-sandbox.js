@@ -27,6 +27,7 @@ export function createSandbox({
     for (const [id, run] of store.runs) {
       if (Date.parse(run.expiresAt) <= now()) {
         run.stopped = true;
+        store.core.forget(store.runs.get(id));
         store.runs.delete(id);
         credentials.delete(id);
       }

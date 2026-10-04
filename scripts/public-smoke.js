@@ -5,7 +5,9 @@ if (!origin?.startsWith('https://')) throw Error('HTTPS origin required');
 const browser = await chromium.launch();
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
-  recordVideo: { dir: '.data/public-video', size: { width: 1440, height: 900 } },
+  ...(process.env.SMOKE_ONLY === '1'
+    ? {}
+    : { recordVideo: { dir: '.data/public-video', size: { width: 1440, height: 900 } } }),
 });
 const page = await context.newPage();
 const errors = [];
@@ -36,9 +38,10 @@ if (
   JSON.stringify(run).includes('Vincent')
 )
   throw Error('Public verification failed');
-await page.screenshot({ path: 'docs/public-restored.png' });
+if (process.env.SMOKE_ONLY !== '1') await page.screenshot({ path: 'docs/public-restored.png' });
 await context.close();
-await page.video().saveAs(process.env.PUBLIC_VIDEO || 'docs/public-demo.webm');
+if (process.env.SMOKE_ONLY !== '1')
+  await page.video().saveAs(process.env.PUBLIC_VIDEO || 'docs/public-demo.webm');
 await browser.close();
 writeFileSync(
   '.data/public-smoke.json',
@@ -50,5 +53,5 @@ writeFileSync(
   }),
 );
 console.log(
-  'Public HTTPS flow passed: browser approval, independent verification, reload restoration; no email. Video saved.',
+  'Public HTTPS flow passed: browser approval, independent verification, reload restoration; no email.',
 );

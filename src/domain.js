@@ -1,3 +1,4 @@
+import { simulateFutures, rankFutures, valueEstimate } from './core/intelligence.js';
 /** @typedef {{id:string, price:number, net:number, miles:number, preservesMeeting:boolean, label:string, departure:string, reason:string}} Alternative */
 /** @typedef {{name:string, trip:{origin:string,destination:string,fare:number,departure:string}, meeting:{person:string,time:string,startsAt:string}, rewards:{miles:number,plannedValue:number}, voucher:{usageProbability:number}}} LifeContext */
 /** @type {LifeContext} */
@@ -100,13 +101,19 @@ export function evaluateRecovery(c = context) {
       reason: `Spends miles worth $${c.rewards.plannedValue} to save $92`,
     },
   ];
-  const viable = options.filter((o) => o.preservesMeeting);
-  const recommended = viable.reduce((best, o) =>
-    o.net + (o.miles ? c.rewards.plannedValue : 0) <
-    best.net + (best.miles ? c.rewards.plannedValue : 0)
-      ? o
-      : best,
+  const simulation = simulateFutures(
+    {},
+    options.map((o) => ({
+      id: o.id,
+      confidence: 1,
+      costs: { money: o.net, futureValue: o.miles ? c.rewards.plannedValue : 0 },
+      constraints: [{ id: 'meeting', passed: o.preservesMeeting }],
+      reversibility: 'reversible',
+    })),
   );
+  const evaluation = rankFutures(simulation);
+  const recommended = options.find((o) => o.id === evaluation.recommended);
+  if (!recommended) throw Error('Recovery needs more evidence');
   return {
     options,
     recommended: recommended.id,
@@ -115,7 +122,10 @@ export function evaluateRecovery(c = context) {
   };
 }
 export function evaluateOffer(credit = 450, c = context) {
-  const expectedCreditValue = Math.round(credit * c.voucher.usageProbability);
+  const expectedCreditValue = valueEstimate({
+    nominal: credit,
+    probability: c.voucher.usageProbability,
+  }).worth;
   return {
     credit,
     cash: c.trip.fare,
