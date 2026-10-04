@@ -35,8 +35,8 @@ for (let iteration = 1; iteration <= 2; iteration++)
     if (iteration === 1)
       await mobile.screenshot({ animations: 'disabled', path: 'docs/phone.png' });
     await mobile.getByRole('button', { name: 'Approve Steward’s plan' }).click();
-    await expect(mobile.getByText('APPROVED BY VINCENT', { exact: true })).toBeVisible();
-    await expect(page.getByText('APPROVED BY VINCENT', { exact: false })).toBeVisible({
+    await expect(mobile.getByText('PLAN APPROVED ✓', { exact: true })).toBeVisible();
+    await expect(page.getByText('APPROVED FROM PHONE', { exact: false })).toBeVisible({
       timeout: 5000,
     });
     await expect(page.getByText('iPhone · just now')).toBeVisible();
@@ -48,7 +48,7 @@ for (let iteration = 1; iteration <= 2; iteration++)
     });
     expect(reused.status()).toBe(200);
     await mobile.goto(approvalUrl);
-    await expect(mobile.getByText('APPROVED BY VINCENT', { exact: true })).toBeVisible();
+    await expect(mobile.getByText('PLAN APPROVED ✓', { exact: true })).toBeVisible();
     await expect(page.getByText('AIRLINE RESPONSE', { exact: false })).toBeVisible({
       timeout: 25000,
     });

@@ -60,8 +60,9 @@ test('official AgentMail SDK serializes approval and verifies cancellation with 
     assert.equal(result.channel, 'email');
     assert.equal(result.messageId, 'msg-test');
     assert.deepEqual(calls[0].body.to, ['vincent@example.com']);
-    assert.match(calls[0].body.text, /504.*412.*92/);
-    assert.match(calls[0].body.html, /APPROVE STEWARD/);
+    assert.equal(calls[0].body.subject, 'Steward needs one decision');
+    assert.match(calls[0].body.text, /Net additional cost: \$92/);
+    assert.match(calls[0].body.html, /APPROVE PLAN/);
     const cancellation = await sendCancellation(r);
     assert.equal(cancellation.messageId, 'msg-test');
     assert.equal(cancellation.mailboxDirection, 'sent');
