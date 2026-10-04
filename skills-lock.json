@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "agentmail": {
+      "source": "agentmail-to/agentmail-skills",
+      "sourceType": "github",
+      "skillPath": "agentmail/SKILL.md",
+      "computedHash": "391004d5529413f042c1656cf0648207ce4fbdd3098b88733c0b1f260a22068d"
+    },
+    "agentmail-check-email": {
+      "source": "agentmail-to/agentmail-skills",
+      "sourceType": "github",
+      "skillPath": "agentmail-check-email/SKILL.md",
+      "computedHash": "eebbac66199f3d83f0de2f062e8b8b409f134dc2bf0542e90b2cd7e160b506af"
+    },
+    "agentmail-send-email": {
+      "source": "agentmail-to/agentmail-skills",
+      "sourceType": "github",
+      "skillPath": "agentmail-send-email/SKILL.md",
+      "computedHash": "be5ad19c963a58bf4d353bd47f53b020e1e525ccff2984cf71f8151fd2f12d4a"
+    }
+  }
+}

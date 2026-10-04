@@ -1,0 +1,198 @@
+[
+  {
+    "id": "demo:1",
+    "sequence": 1,
+    "type": "flight.cancelled",
+    "at": "2026-10-04T19:07:58.775Z",
+    "data": {
+      "flight": "SFO → JFK",
+      "source": "Sandbox airline event"
+    }
+  },
+  {
+    "id": "demo:2",
+    "sequence": 2,
+    "type": "context.loaded",
+    "at": "2026-10-04T19:07:58.776Z",
+    "data": {}
+  },
+  {
+    "id": "demo:3",
+    "sequence": 3,
+    "type": "calendar.conflict_found",
+    "at": "2026-10-04T19:07:58.777Z",
+    "data": {
+      "time": "9 AM",
+      "person": "Sarah"
+    }
+  },
+  {
+    "id": "demo:4",
+    "sequence": 4,
+    "type": "alternatives.found",
+    "at": "2026-10-04T19:07:58.778Z",
+    "data": {
+      "checked": 7
+    }
+  },
+  {
+    "id": "demo:5",
+    "sequence": 5,
+    "type": "economics.calculated",
+    "at": "2026-10-04T19:07:58.779Z",
+    "data": {
+      "fare": 504,
+      "refund": 412,
+      "net": 92,
+      "milesValue": 560
+    }
+  },
+  {
+    "id": "demo:6",
+    "sequence": 6,
+    "type": "recommendation.ready",
+    "at": "2026-10-04T19:07:58.781Z",
+    "data": {
+      "option": "B"
+    }
+  },
+  {
+    "id": "demo:7",
+    "sequence": 7,
+    "type": "decision.sent",
+    "at": "2026-10-04T19:07:58.782Z",
+    "data": {
+      "delivery": "preparing"
+    }
+  },
+  {
+    "id": "demo:8",
+    "sequence": 8,
+    "type": "decision.delivery_updated",
+    "at": "2026-10-04T19:07:58.782Z",
+    "data": {
+      "channel": "local"
+    }
+  },
+  {
+    "id": "demo:9",
+    "sequence": 9,
+    "type": "approval.received",
+    "at": "2026-10-04T19:07:58.782Z",
+    "data": {
+      "by": "Vincent",
+      "device": "Replay · simulated approval"
+    }
+  },
+  {
+    "id": "demo:10",
+    "sequence": 10,
+    "type": "booking.started",
+    "at": "2026-10-04T19:07:58.784Z",
+    "data": {
+      "option": "B",
+      "price": 504
+    }
+  },
+  {
+    "id": "demo:11",
+    "sequence": 11,
+    "type": "booking.completed",
+    "at": "2026-10-04T19:07:58.785Z",
+    "data": {
+      "confirmation": "ST-FFAAE8",
+      "price": 504
+    }
+  },
+  {
+    "id": "demo:12",
+    "sequence": 12,
+    "type": "calendar.updated",
+    "at": "2026-10-04T19:07:58.786Z",
+    "data": {
+      "meeting": "9 AM tomorrow",
+      "arrival": "6:05 AM"
+    }
+  },
+  {
+    "id": "demo:13",
+    "sequence": 13,
+    "type": "sarah.notified",
+    "at": "2026-10-04T19:07:58.788Z",
+    "data": {
+      "person": "Sarah",
+      "message": "Vincent will be there at 9 AM."
+    }
+  },
+  {
+    "id": "demo:14",
+    "sequence": 14,
+    "type": "refund.requested",
+    "at": "2026-10-04T19:07:58.789Z",
+    "data": {
+      "amount": 412
+    }
+  },
+  {
+    "id": "demo:15",
+    "sequence": 15,
+    "type": "airline.offer_received",
+    "at": "2026-10-04T19:07:58.790Z",
+    "data": {
+      "credit": 450,
+      "originalFare": 412
+    }
+  },
+  {
+    "id": "demo:16",
+    "sequence": 16,
+    "type": "offer.evaluated",
+    "at": "2026-10-04T19:07:58.791Z",
+    "data": {
+      "credit": 450,
+      "cash": 412,
+      "expectedCreditValue": 158,
+      "usageProbability": 0.35,
+      "preferred": "cash",
+      "reasons": [
+        "Airline-locked credit",
+        "Expiration risk",
+        "Low expected use",
+        "Cancellation refund policy supports cash"
+      ]
+    }
+  },
+  {
+    "id": "demo:17",
+    "sequence": 17,
+    "type": "rebuttal.sent",
+    "at": "2026-10-04T19:07:58.792Z",
+    "data": {
+      "requested": 412,
+      "reason": "Cash has greater value to Vincent. Please refund the original payment method."
+    }
+  },
+  {
+    "id": "demo:18",
+    "sequence": 18,
+    "type": "refund.confirmed",
+    "at": "2026-10-04T19:07:58.794Z",
+    "data": {
+      "amount": 412,
+      "method": "original payment method"
+    }
+  },
+  {
+    "id": "demo:19",
+    "sequence": 19,
+    "type": "exception.resolved",
+    "at": "2026-10-04T19:07:58.795Z",
+    "data": {
+      "humanDecisions": 1,
+      "meetingSaved": true,
+      "milesPreserved": 31000,
+      "refund": 412,
+      "net": 92
+    }
+  }
+]

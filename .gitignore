@@ -1,6 +1,10 @@
 .env
 .env.local
 .env.*.local
-node_modules/
-.next/
+node_modules
+.next
 .DS_Store
+.data/
+*.log
+test-results/
+playwright-report/
