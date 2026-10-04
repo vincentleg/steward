@@ -83,10 +83,10 @@ for (let attempt = 1; attempt <= 2; attempt++) {
         throw new Error('Calendar or notification verification failed');
       if (run.decision.milesPreserved !== 31000 || run.actions.refund.amount !== 412)
         throw new Error('Outcome verification failed');
-      await page.getByText('EXCEPTION RESOLVED', { exact: true }).waitFor({ timeout: 5000 });
+      await page.getByText('OUTCOME RESTORED ✓', { exact: true }).waitFor({ timeout: 5000 });
       await page.getByText('$412 CASH REFUNDED', { exact: true }).waitFor({ timeout: 5000 });
       await page.reload();
-      await page.getByText('EXCEPTION RESOLVED', { exact: true }).waitFor({ timeout: 5000 });
+      await page.getByText('OUTCOME RESTORED ✓', { exact: true }).waitFor({ timeout: 5000 });
       const evidence = {
         attempt,
         runId,

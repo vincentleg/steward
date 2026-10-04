@@ -4,7 +4,21 @@ import http from 'node:http';
 // Desktop run creation and event state stay on localhost.
 const server = http.createServer((req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
+  if (req.method === 'GET' && path === '/') {
+    res.writeHead(302, { Location: '/sandbox' });
+    res.end();
+    return;
+  }
+  const publicRoute =
+    path === '/sandbox' ||
+    path === '/sandbox/' ||
+    path === '/sandbox/app.js' ||
+    path === '/sandbox/qr.svg' ||
+    path === '/sandbox/share' ||
+    path === '/sandbox/api/constitution' ||
+    /^\/sandbox\/api\/sessions(?:\/[a-f0-9-]{36}(?:\/(approve|stop))?)?$/.test(path);
   const allowed =
+    publicRoute ||
     path === '/approve' ||
     path === '/style.css' ||
     path === '/api/health' ||
@@ -17,7 +31,9 @@ const server = http.createServer((req, res) => {
   const upstream = http.request(
     {
       hostname: '127.0.0.1',
-      port: Number(process.env.PORT || 3000),
+      port: publicRoute
+        ? Number(process.env.SANDBOX_PORT || 3003)
+        : Number(process.env.PORT || 3000),
       path: req.url,
       method: req.method,
       headers: req.headers,

@@ -81,7 +81,7 @@ export function lifeCommand(run, command) {
       receipt = {
         id: `${run.id}:sarah`,
         to: 'Sarah sandbox persona',
-        text: 'Vincent’s flight was cancelled, but Steward rebooked him. He will be there for your 9 AM meeting.',
+        text: `${run.context.name}’s flight was cancelled, but Steward rebooked the trip. The 9 AM meeting is preserved.`,
       };
       run.world.people.sarahInbox.push(receipt);
       break;

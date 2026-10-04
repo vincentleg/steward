@@ -38,6 +38,10 @@ for (let iteration = 1; iteration <= 2; iteration++)
     if (iteration === 1)
       await page.screenshot({ animations: 'disabled', path: 'docs/execution.png' });
     // A second POST remains idempotent even after workflow progression.
+    const reused = await mobile.request.post(approvalUrl, {
+      form: { token: new URL(approvalUrl).searchParams.get('token') },
+    });
+    expect(reused.status()).toBe(200);
     await mobile.goto(approvalUrl);
     await expect(mobile.getByText('APPROVED BY VINCENT', { exact: true })).toBeVisible();
     await expect(page.getByText('AIRLINE RESPONSE', { exact: false })).toBeVisible({
@@ -47,12 +51,12 @@ for (let iteration = 1; iteration <= 2; iteration++)
       timeout: 10000,
     });
     if (iteration === 1) await page.screenshot({ animations: 'disabled', path: 'docs/offer.png' });
-    await expect(page.getByText('EXCEPTION RESOLVED', { exact: true })).toBeVisible({
+    await expect(page.getByText('OUTCOME RESTORED ✓', { exact: true })).toBeVisible({
       timeout: 25000,
     });
     await expect(page.getByText('$412 CASH REFUNDED', { exact: true })).toBeVisible();
     await page.reload();
-    await expect(page.getByText('EXCEPTION RESOLVED', { exact: true })).toBeVisible();
+    await expect(page.getByText('OUTCOME RESTORED ✓', { exact: true })).toBeVisible();
     if (iteration === 1)
       await page.screenshot({ animations: 'disabled', path: 'docs/resolved.png' });
     expect(errors).toEqual([]);
@@ -62,7 +66,7 @@ test('replay resolves without approval and uses the same event schema', async ({
   await page.goto('/');
   await page.getByRole('button', { name: 'Replay', exact: false }).click();
   await expect(page.getByText('DETERMINISTIC REPLAY', { exact: true })).toBeVisible();
-  await expect(page.getByText('EXCEPTION RESOLVED', { exact: true })).toBeVisible({
+  await expect(page.getByText('OUTCOME RESTORED ✓', { exact: true })).toBeVisible({
     timeout: 60000,
   });
   await page.getByRole('button', { name: 'Live proof' }).click();

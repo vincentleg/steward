@@ -14,6 +14,7 @@ export function validateApproval(token, secret, now = Date.now()) {
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     if (
+      !Number.isFinite(payload.exp) ||
       payload.exp <= now ||
       payload.decisionId !== 'flight-recovery' ||
       typeof payload.runId !== 'string'

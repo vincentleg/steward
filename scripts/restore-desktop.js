@@ -37,10 +37,10 @@ for (const [index, run] of runs.entries()) {
   await page.goto(origin);
   await page.evaluate((id) => localStorage.setItem('steward-run', id), run.id);
   await page.reload();
-  await page.getByText('EXCEPTION RESOLVED', { exact: true }).waitFor({ timeout: 5000 });
+  await page.getByText('OUTCOME RESTORED ✓', { exact: true }).waitFor({ timeout: 5000 });
   await page.getByText('$412 CASH REFUNDED', { exact: true }).waitFor({ timeout: 5000 });
   await page.reload();
-  await page.getByText('EXCEPTION RESOLVED', { exact: true }).waitFor({ timeout: 5000 });
+  await page.getByText('OUTCOME RESTORED ✓', { exact: true }).waitFor({ timeout: 5000 });
   const approval = run.events.find((e) => e.type === 'approval.received');
   const evidence = {
     attempt: index + 1,

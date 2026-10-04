@@ -10,10 +10,12 @@ const page = await context.newPage();
 await page.goto(process.env.DEMO_URL || 'http://localhost:3000');
 await page.waitForTimeout(2200);
 await page.getByRole('button', { name: 'Replay', exact: false }).click();
-await page.getByText('EXCEPTION RESOLVED', { exact: true }).waitFor({ timeout: 60000 });
+await page.getByText('OUTCOME RESTORED ✓', { exact: true }).waitFor({ timeout: 60000 });
 await page.waitForTimeout(3500);
 const video = page.video();
 await context.close();
-await video.saveAs('docs/replay.webm');
+await video.saveAs(process.env.DEMO_OUTPUT || 'docs/replay-new.webm');
 await browser.close();
-console.log('Silent stage fallback saved to docs/replay.webm. Replay approval is simulated.');
+console.log(
+  'New silent stage fallback saved. Replay approval is simulated; the golden video is preserved.',
+);

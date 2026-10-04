@@ -26,8 +26,10 @@
       <footer>
         <span>WHEN PLANS BREAK, STEWARD FIXES THEM.</span>
         <div class="footer-controls">
-          <button id="proof-toggle">Live proof <span>↗</span></button><span class="separator"></span
-          ><button id="replay">Replay <span>↻</span></button
+          <button id="constitution-toggle">Constitution <span>↗</span></button
+          ><button id="stop" hidden>Stop</button
+          ><button id="proof-toggle">Live proof <span>↗</span></button
+          ><span class="separator"></span><button id="replay">Replay <span>↻</span></button
           ><button id="reset" title="Return to calm; current workflow continues">Reset</button
           ><span id="mode" class="mode-tag">SANDBOX WORLD · LIVE AGENT</span>
         </div>
@@ -42,6 +44,16 @@
         <button id="proof-close" aria-label="Close live proof">×</button>
       </div>
       <div id="proof-content"></div>
+    </aside>
+    <aside id="constitution" class="proof-panel" hidden>
+      <div class="proof-head">
+        <div>
+          <span class="eyebrow">YOUR MANDATE, ENFORCED</span>
+          <h3>Steward Constitution</h3>
+        </div>
+        <button id="constitution-close" aria-label="Close constitution">×</button>
+      </div>
+      <div id="constitution-content"></div>
     </aside>
     <div id="toast" role="status" hidden></div>
     <script type="module" src="/app.js"></script>

@@ -1,3 +1,18 @@
+const publicMode = document.body.dataset.mode === 'public';
+const storage = publicMode ? sessionStorage : localStorage;
+const runKey = publicMode ? 'steward-public-run' : 'steward-run';
+const api = publicMode ? '/sandbox/api/sessions' : '/api/runs';
+function apiFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      ...(publicMode
+        ? { Authorization: 'Bearer ' + (sessionStorage.getItem('steward-public-token') || '') }
+        : {}),
+    },
+  });
+}
 const main = document.querySelector('#main');
 let run = null,
   lastPhase = '',
@@ -15,29 +30,35 @@ const event = (t) => run?.events.find((e) => e.type === t);
 const phase = () =>
   !run
     ? 'calm'
-    : !has('flight.cancelled')
-      ? 'receiving'
-      : has('exception.resolved')
-        ? 'resolved'
-        : has('refund.confirmed')
-          ? 'refund'
-          : has('rebuttal.sent')
-            ? 'rebuttal'
-            : has('offer.evaluated')
-              ? 'evaluation'
-              : has('airline.offer_received')
-                ? 'offer'
-                : has('approval.received')
-                  ? 'execution'
-                  : has('decision.sent')
-                    ? 'decision'
-                    : has('recommendation.ready')
-                      ? 'options'
-                      : 'bloom';
+    : run.events.at(-1)?.type === 'workflow.error'
+      ? 'error'
+      : !has('flight.cancelled')
+        ? 'receiving'
+        : has('exception.resolved')
+          ? 'resolved'
+          : run.stopped
+            ? 'stopped'
+            : has('outcome.verification_started')
+              ? 'verification'
+              : has('refund.confirmed')
+                ? 'refund'
+                : has('rebuttal.sent')
+                  ? 'rebuttal'
+                  : has('offer.evaluated')
+                    ? 'evaluation'
+                    : has('airline.offer_received')
+                      ? 'offer'
+                      : has('approval.received')
+                        ? 'execution'
+                        : has('decision.sent')
+                          ? 'decision'
+                          : has('recommendation.ready')
+                            ? 'options'
+                            : 'bloom';
 const title = (label, heading, description = '') =>
   `<div class="section-heading"><div class="eyebrow"><span class="tiny-line"></span>${label}</div><h1>${heading}</h1>${description ? `<p>${description}</p>` : ''}</div>`;
 function calm() {
-  return `<section class="calm scene">${title('YOUR PERSONAL OPERATIONS TEAM', 'Your life is<br><em>handled.</em>', 'We watch the details. You live your life.')}<div class="calm-center"><div class="orbit-mark"><span>✳</span></div><div class="calm-status"><span class="status-dot"></span> NO DECISIONS NEED YOU.</div><p>Everything is where it should be.</p><button class="primary" id="trigger">See Steward take over <span>↗</span></button><div class="trigger-note">A flight cancellation. Six consequences. One decision.</div></div><div class="watching-grid">${[
+  return `<section class="calm scene">${title('PERSONAL OUTCOME RECOVERY', 'Your life is<br><em>handled.</em>', 'Agents execute tasks. Steward restores outcomes.')}<div class="calm-center"><div class="orbit-mark"><span>✳</span></div><div class="calm-status"><span class="status-dot"></span> NO DECISIONS NEED YOU.</div><p>YOUR WORLD IS STABLE</p><button class="primary" id="trigger">See Steward take over <span>↗</span></button><div class="trigger-note">${publicMode ? 'No account. No personal data. No connected accounts.' : 'One event. Six consequences. One decision.'}</div></div><div class="watching-grid">${[
     ['01', 'TRAVEL', 'SFO → JFK', '6:40 PM tonight', '↗'],
     ['02', 'CALENDAR', 'Sarah · 9 AM', 'Tomorrow’s priority', '◷'],
     ['03', 'REWARDS', '31,000 miles', 'December trip protected', '✳'],
@@ -47,7 +68,9 @@ function calm() {
       ([n, l, v, s, i]) =>
         `<div class="watch-card"><div class="watch-top"><span>${n} / ${l}</span><span class="watch-icon">${i}</span></div><h3>${v}</h3><p>${s}</p><div class="watch-state"><span class="status-dot"></span>Watching</div></div>`,
     )
-    .join('')}</div></section>`;
+    .join(
+      '',
+    )}</div><div class="domain-strip"><span>YOUR WORLD</span><b>TRAVEL</b><b>MONEY</b><b>TIME</b><b>PEOPLE</b><span class="concept-domains">PURCHASES · BENEFITS · HOME <small>CONCEPT</small></span></div></section>`;
 }
 const nodes = [
   ['TRAVEL', 'Searching alternatives…', '7 alternatives checked', 'alternatives.found', '↗'],
@@ -61,15 +84,15 @@ function receiving() {
   return `<section class="scene receiving-scene">${title('EVENT TRANSPORT', 'Your agent is<br><em>on it.</em>', 'Receiving the flight cancellation from the sandbox airline.')}<div class="receiving-status"><span class="pulse-ring"></span> Waiting for the event. Your context is ready.</div></section>`;
 }
 function bloom() {
-  return `<section class="scene bloom">${title('EXCEPTION DETECTED', 'One change.<br><em>Six consequences.</em>', 'Steward is connecting the things this flight affects.')}<div class="graph"><svg class="graph-lines" viewBox="0 0 900 400" preserveAspectRatio="none" aria-hidden="true"><path d="M450 200L165 66 M450 200L450 45 M450 200L735 66 M450 200L735 334 M450 200L450 355 M450 200L165 334"/></svg><div class="graph-core"><span class="cancel-icon">↗</span><span class="eyebrow">AIRLINE EVENT RECEIVED</span><h2>Flight cancelled.</h2><p>SFO → JFK <span>·</span> 6:40 PM</p><div class="core-label">STEWARD TAKING OVER</div></div>${nodes.map(([name, processing, done, type, icon], i) => `<div class="consequence node-${i} ${has(type) ? 'complete' : ''}" style="--i:${i}"><div class="node-title"><span class="node-symbol">${icon}</span>${name}<span class="node-indicator">${has(type) ? '✓' : '·'}</span></div><p>${has(type) ? done : processing}</p></div>`).join('')}</div><div class="processing-footer"><span class="pulse-ring"></span> ${has('economics.calculated') ? 'Constraints checked. Economics calculated.' : 'Reading context. Finding a way forward.'}<span class="processing-count">${nodes.filter((n) => has(n[3])).length} / 6 CONNECTED</span></div></section>`;
+  return `<section class="scene bloom">${title('WORLD STATE DEVIATION DETECTED', 'One change.<br><em>Six consequences.</em>', 'Steward is connecting the things this flight affects.')}<div class="graph"><svg class="graph-lines" viewBox="0 0 900 400" preserveAspectRatio="none" aria-hidden="true"><path d="M450 200L165 66 M450 200L450 45 M450 200L735 66 M450 200L735 334 M450 200L450 355 M450 200L165 334"/></svg><div class="graph-core"><span class="cancel-icon">↗</span><span class="eyebrow">AIRLINE EVENT RECEIVED</span><h2>Flight cancelled.</h2><p>SFO → JFK <span>·</span> 6:40 PM</p><div class="core-label">STEWARD TAKING OVER</div></div>${nodes.map(([name, processing, done, type, icon], i) => `<div class="consequence node-${i} ${has(type) ? 'complete' : ''}" style="--i:${i}"><div class="node-title"><span class="node-symbol">${icon}</span>${name}<span class="node-indicator">${has(type) ? '✓' : '·'}</span></div><p>${has(type) ? done : processing}</p></div>`).join('')}</div><div class="processing-footer"><span class="pulse-ring"></span> ${has('economics.calculated') ? 'Constraints checked. Economics calculated.' : 'Reading context. Finding a way forward.'}<span class="processing-count">${nodes.filter((n) => has(n[3])).length} / 6 CONNECTED</span></div></section>`;
 }
 function options() {
-  return `<section class="scene options">${title('DECISION COMPRESSION', 'Six consequences.<br><em>One way forward.</em>')}<div class="compression"><span>6 <small>CONSEQUENCES</small></span><b>→</b><span>3 <small>OPTIONS</small></span><b>→</b><span class="accent">1 <small>DECISION</small></span></div><div class="options-grid">${run.decision.options.map((o) => `<article class="option ${o.id === 'B' ? 'recommended' : ''}"><div class="option-top"><span>OPTION ${o.id}</span><span>${o.id === 'B' ? 'RECOMMENDED' : o.id === 'A' ? 'MEETING CONFLICT' : 'POOR VALUE'}</span></div><h3>${o.label}</h3><p>${o.departure}</p><div class="option-price">${o.id === 'C' ? '31,000' : o.id === 'A' ? '$0' : '+$92'} <small>${o.id === 'C' ? 'MILES' : 'NET'}</small></div><div class="option-reason">${o.id === 'B' ? check : '<span class="dim-cross">×</span>'}${o.reason}</div>${o.id === 'B' ? '<div class="option-math">$504 new fare − $412 refund = $92</div>' : ''}</article>`).join('')}</div><div class="options-bottom"><span class="pulse-ring"></span> Compressing the rest into one approval.</div></section>`;
+  return `<section class="scene options">${title('SIMULATING POSSIBLE FUTURES', 'Six consequences.<br><em>One way forward.</em>')}<div class="compression"><span>6 <small>CONSEQUENCES</small></span><b>→</b><span>3 <small>FUTURES</small></span><b>→</b><span class="accent">1 <small>DECISION</small></span></div><div class="options-grid">${run.decision.options.map((o) => `<article class="option ${o.id === 'B' ? 'recommended' : ''}"><div class="option-top"><span>FUTURE ${o.id}</span><span>${o.id === 'B' ? 'RECOMMENDED' : o.id === 'A' ? 'MEETING CONFLICT' : 'POOR VALUE'}</span></div><h3>${o.label}</h3><p>${o.departure}</p><div class="option-price">${o.id === 'C' ? '31,000' : o.id === 'A' ? '$0' : '+$92'} <small>${o.id === 'C' ? 'MILES' : 'NET'}</small></div><div class="option-reason">${o.id === 'B' ? check : '<span class="dim-cross">×</span>'}${o.reason}</div>${o.id === 'B' ? '<div class="option-math">$504 new fare − $412 refund = $92</div>' : ''}</article>`).join('')}</div><div class="options-bottom"><span class="pulse-ring"></span> Compressing the rest into one approval.</div></section>`;
 }
 function decision() {
   const delivery = run.delivery;
   const emailed = delivery?.channel === 'email';
-  return `<section class="scene decision-scene"><div class="decision-intro">${title('ONE DECISION NEEDS YOU', 'Keep your plans.<br><em>We’ll do the rest.</em>', 'The travel, the meeting, the money.<br>Already figured out.')}<div class="decision-summary"><div><strong>6</strong><span>CONSEQUENCES</span></div><b>→</b><div><strong>3</strong><span>OPTIONS</span></div><b>→</b><div><strong class="accent">1</strong><span>DECISION</span></div></div><div class="approval-channel"><span class="phone-icon">▯</span><div><strong>${run.mode === 'replay' ? 'Replay approval arriving…' : emailed ? 'Sent to your phone.' : delivery?.error ? 'Email unavailable. Local approval ready.' : 'Ready for your approval.'}</strong><p>${run.mode === 'replay' ? 'Automatic simulated approval · stage safety mode' : emailed ? 'Check your email. One tap and we take over.' : 'Open the secure approval page to continue.'}</p></div></div></div><article class="decision-card"><div class="recommendation-label"><span>✳</span> STEWARD RECOMMENDS</div><h2>Get home<br>tonight.</h2><p class="flight-detail">Alternative flight <span>·</span> 9:40 PM <span>↗</span></p><div class="decision-price"><span>+$92</span><div>NET INCREMENTAL<br><small>$504 fare − $412 refund</small></div></div><ul class="benefits"><li>9 AM meeting preserved</li><li>31,000 miles preserved</li><li>$412 refund protected</li></ul>${run.mode === 'replay' ? '<button class="primary" disabled>Awaiting replay approval <span>◷</span></button>' : `<a class="primary" href="${escape(run.approvalUrl || '#')}" target="_blank" rel="noopener">Approve Steward’s plan <span>↗</span></a>`}<div class="card-footnote">One approval. Everything else is on us.</div></article></section>`;
+  return `<section class="scene decision-scene"><div class="decision-intro">${title('ONE DECISION NEEDS YOU', 'Keep your plans.<br><em>We’ll do the rest.</em>', 'One outcome to protect.<br>Every consequence accounted for.')}<div class="decision-summary"><div><strong>6</strong><span>CONSEQUENCES</span></div><b>→</b><div><strong>3</strong><span>FUTURES</span></div><b>→</b><div><strong class="accent">1</strong><span>DECISION</span></div></div><div class="approval-channel"><span class="phone-icon">▯</span><div><strong>${run.mode === 'replay' ? 'Replay approval arriving…' : publicMode ? 'The judgment is yours.' : emailed ? 'Sent to your phone.' : delivery?.error ? 'Email unavailable. Local approval ready.' : 'Ready for your approval.'}</strong><p>${run.mode === 'replay' ? 'Automatic simulated approval · stage safety mode' : publicMode ? 'Approve here. No email or account needed.' : emailed ? 'Check your email. One tap and we take over.' : 'Open the secure approval page to continue.'}</p></div></div></div><article class="decision-card"><div class="recommendation-label"><span>✳</span> STEWARD RECOMMENDS</div><h2>Get home<br>tonight.</h2><p class="flight-detail">Alternative flight <span>·</span> 9:40 PM <span>↗</span></p><div class="decision-price"><span>+$92</span><div>NET INCREMENTAL<br><small>$504 fare − $412 refund</small></div></div><ul class="benefits"><li>9 AM meeting preserved</li><li>31,000 miles preserved</li><li>$412 refund protected</li></ul>${run.mode === 'replay' ? '<button class="primary" disabled>Awaiting replay approval <span>◷</span></button>' : publicMode ? `<button class="primary" id="approve-public">Approve Steward’s plan <span>↗</span></button>` : `<a class="primary" href="${escape(run.approvalUrl || '#')}" target="_blank" rel="noopener">Approve Steward’s plan <span>↗</span></a>`}<div class="card-footnote">One approval. Everything else is on us.</div></article></section>`;
 }
 const lanes = [
   [
@@ -90,7 +113,7 @@ const lanes = [
 ];
 function execution() {
   const approval = event('approval.received');
-  return `<section class="scene execution">${title('AUTONOMOUS EXECUTION', 'Consider it<br><em>taken care of.</em>', 'You made the decision. Steward is doing the work.')}<div class="approved-badge">${check}<div>APPROVED BY VINCENT <span>${escape(approval.data.device)} · just now</span></div><span class="approved-line"></span> ONE HUMAN DECISION</div><div class="lanes">${lanes
+  return `<section class="scene execution">${title('AUTONOMOUS EXECUTION', 'Consider it<br><em>taken care of.</em>', 'You made the decision. Steward is doing the work.')}<div class="approved-badge">${check}<div>APPROVED BY ${escape(approval.data.by.toUpperCase())} <span>${escape(approval.data.device)} · just now</span></div><span class="approved-line"></span> ONE HUMAN DECISION</div><div class="lanes">${lanes
     .map(([label, start, done, steps], i) => {
       const finished = has(done),
         active = has(start);
@@ -118,7 +141,7 @@ function offer(p) {
     )}</div><div class="value-verdict ${evaluated ? 'visible' : ''}"><span>$412 CASH</span> <b>&gt;</b> <span class="credit">$450 CREDIT</span><p>Estimated credit value to you: $158 · 35% expected use</p></div></div></div><div class="rebuttal-bar ${p === 'refund' ? 'refund-success' : ''}"><span>${p === 'refund' ? '✓' : p === 'rebuttal' ? '↗' : '✳'}</span><div><strong>${p === 'refund' ? '$412 CASH REFUND APPROVED' : p === 'rebuttal' ? 'CREDIT REJECTED. CASH REQUESTED.' : evaluated ? 'CASH WINS. STEWARD IS RESPONDING.' : 'LARGER DOESN’T ALWAYS MEAN BETTER.'}</strong><p>${p === 'refund' ? 'Returned to your original payment method.' : p === 'rebuttal' ? '“Please return the $412 to the original payment method.”' : evaluated ? 'Your preferences and refund policy support cash. No second approval needed.' : 'Comparing flexibility, expiration, expected use, and refund policy.'}</p></div><span class="rebuttal-status">${p === 'refund' ? 'CONFIRMED' : p === 'rebuttal' ? 'SENT ✓' : 'AUTONOMOUS'}</span></div></section>`;
 }
 function resolved() {
-  return `<section class="scene resolved">${title('EXCEPTION RESOLVED', 'Your life is<br><em>handled.</em>', 'One cancellation. Six consequences. Zero loose ends.')}<div class="resolution-mark">✓</div><div class="resolution-grid">${[
+  return `<section class="scene resolved">${title('OUTCOME RESTORED ✓', 'Your life is<br><em>handled.</em>', 'One cancellation. Six consequences. Zero loose ends.')}<div class="resolution-mark">✓</div><div class="resolution-grid">${[
     ['HOME TONIGHT', '9:40 PM flight confirmed'],
     ['9 AM MEETING SAVED', 'Sarah knows you’ll be there'],
     ['31,000 MILES PRESERVED', 'December trip still protected'],
@@ -130,14 +153,17 @@ function resolved() {
     )
     .join(
       '',
-    )}</div><div class="final-line"><span>ONE HUMAN DECISION.</span><b>Everything else, handled.</b></div><button class="text-button" id="again">Return to calm <span>↗</span></button></section>`;
+    )}</div><div class="verification-summary">${run.outcome?.verified ? '6 outcome checks passed. Action receipts independently verified.' : 'Booking, calendar, notification and refund confirmed.'}</div><div class="final-line"><span>ONE HUMAN DECISION.</span><b>Everything else, handled.</b></div><button class="text-button" id="again">Return to calm <span>↗</span></button></section>`;
 }
 function render() {
   document.querySelector('#mode').textContent = !connected
     ? 'RECONNECTING · STATE PRESERVED'
     : run?.mode === 'replay'
       ? 'DETERMINISTIC REPLAY'
-      : 'SANDBOX WORLD · LIVE AGENT';
+      : publicMode
+        ? 'PUBLIC SANDBOX · SYNTHETIC WORLD'
+        : 'SANDBOX WORLD · LIVE AGENT';
+  document.querySelector('#stop').hidden = !run || run.state === 'RESOLVED' || run.stopped;
   const p = phase();
   const revision = `${run?.id}:${run?.events.length}:${p}`;
   if (revision === lastRevision) return;
@@ -154,7 +180,18 @@ function render() {
   }
   if (p !== lastPhase) {
     main.innerHTML = (
-      { calm, receiving, bloom, options, decision, execution, resolved }[p] || (() => offer(p))
+      {
+        calm,
+        receiving,
+        bloom,
+        options,
+        decision,
+        execution,
+        resolved,
+        verification,
+        stopped,
+        error,
+      }[p] || (() => offer(p))
     )();
     lastPhase = p;
     bind();
@@ -167,11 +204,31 @@ function render() {
     ? 'RECONNECTING · STATE PRESERVED'
     : run?.mode === 'replay'
       ? 'DETERMINISTIC REPLAY'
-      : 'SANDBOX WORLD · LIVE AGENT';
+      : publicMode
+        ? 'PUBLIC SANDBOX · SYNTHETIC WORLD'
+        : 'SANDBOX WORLD · LIVE AGENT';
 }
 function bind() {
   document.querySelector('#trigger')?.addEventListener('click', () => start('live'));
   document.querySelector('#again')?.addEventListener('click', reset);
+  document
+    .querySelector('#recover')
+    ?.addEventListener('click', () => start(publicMode ? 'public' : 'replay'));
+  document.querySelector('#approve-public')?.addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      const response = await apiFetch(`${api}/${run.id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!response.ok) throw Error();
+      await poll();
+    } catch {
+      toast('Approval could not be processed. Please try again.');
+      e.target.disabled = false;
+    }
+  });
 }
 function toast(text) {
   const el = document.querySelector('#toast');
@@ -188,15 +245,19 @@ async function start(mode) {
     trigger.textContent = 'Receiving airline event…';
   }
   try {
-    const r = await fetch('/api/runs', {
+    const r = await apiFetch(api, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify(publicMode ? {} : { mode }),
       signal: AbortSignal.timeout(5000),
     });
     if (!r.ok) throw Error();
     run = await r.json();
-    localStorage.setItem('steward-run', run.id);
+    if (publicMode) {
+      sessionStorage.setItem('steward-public-token', run.accessToken);
+      delete run.accessToken;
+    }
+    storage.setItem(runKey, run.id);
     lastPhase = '';
     render();
   } catch {
@@ -211,7 +272,7 @@ async function start(mode) {
 }
 function reset() {
   run = null;
-  localStorage.removeItem('steward-run');
+  storage.removeItem(runKey);
   lastPhase = '';
   render();
 }
@@ -236,26 +297,34 @@ const labels = {
   'offer.evaluated': 'Credit evaluated · cash wins',
   'rebuttal.sent': 'Credit rejected · cash requested',
   'refund.confirmed': '$412 cash refund confirmed',
-  'exception.resolved': 'Exception resolved',
+  'exception.resolved': 'Outcome restored',
+  'outcome.verification_started': 'Checking actual resource state',
+  'outcome.verified': 'Outcome independently verified',
+  'workflow.stopped': 'Further actions stopped',
 };
 function renderProof() {
   const el = document.querySelector('#proof-content');
   el.innerHTML = run
-    ? `<div class="proof-meta"><span>${run.mode.toUpperCase()} · ${escape(run.state)}</span><code>${run.id}</code><p>Airline, calendar, Sarah, booking and payments are sandboxed. Approval and workflow are real. ${run.delivery?.channel === 'email' ? 'AgentMail approval email sent.' : 'Email is ' + (run.mode === 'replay' ? 'simulated.' : 'not configured or not yet sent.')}</p></div><ol class="proof-events">${run.events.map((e) => `<li><span class="proof-check">✓</span><div>${escape(labels[e.type] || e.type)}<small>${escape(e.type)}</small></div><time>${new Date(e.at).toLocaleTimeString([], { hour12: false })}</time></li>`).join('')}</ol>`
+    ? `<div class="proof-meta"><span>${run.mode.toUpperCase()} · ${escape(run.state)}</span><code>${run.id}</code><p>Airline, calendar, Sarah, booking and payments are sandboxed. Approval and workflow are real. ${publicMode ? 'Anonymous browser approval. No email sent. Session auto-deletes after 30 minutes.' : run.delivery?.channel === 'email' ? 'AgentMail approval email sent.' : 'Email is ' + (run.mode === 'replay' ? 'simulated.' : 'not configured or not yet sent.')}</p></div><ol class="proof-events">${run.events.map((e) => `<li><span class="proof-check">✓</span><div>${escape(labels[e.type] || e.type)}<small>${escape(e.type)}</small></div><time>${new Date(e.at).toLocaleTimeString([], { hour12: false })}</time></li>`).join('')}</ol>`
     : '<div class="proof-meta"><p>Start a flight cancellation to see the backend event log. Every action has a timestamp and durable run ID.</p></div>';
 }
 async function poll() {
-  const id = run?.id || localStorage.getItem('steward-run');
+  const id = run?.id || storage.getItem(runKey);
   if (!id) return;
   try {
-    const res = await fetch(`/api/runs/${id}`, { signal: AbortSignal.timeout(4000) });
+    const res = await apiFetch(`${api}/${id}`, { signal: AbortSignal.timeout(4000) });
     if (res.status === 404) {
-      localStorage.removeItem('steward-run');
+      storage.removeItem(runKey);
+      run = null;
+      lastPhase = '';
+      lastRevision = '';
+      render();
+      if (publicMode) toast('This private sandbox session expired. Start a fresh world.');
       return;
     }
     if (!res.ok) throw Error();
     const next = await res.json();
-    if (localStorage.getItem('steward-run') !== id) return;
+    if (storage.getItem(runKey) !== id) return;
     run = next;
     connected = true;
     render();
@@ -274,9 +343,88 @@ document
   .querySelector('#proof-close')
   .addEventListener('click', () => (document.querySelector('#proof').hidden = true));
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') document.querySelector('#proof').hidden = true;
+  if (e.key === 'Escape') {
+    document.querySelector('#proof').hidden = true;
+    document.querySelector('#constitution').hidden = true;
+  }
   if (e.key.toLowerCase() === 'r' && e.shiftKey) start('replay');
 });
+if (publicMode) {
+  document.querySelector('#replay').hidden = true;
+  document.querySelector('.avatar').textContent = 'S';
+  document.querySelector('.header-center').innerHTML =
+    '<span class="status-dot"></span> SYNTHETIC WORLD · PRIVATE SESSION';
+}
 render();
 await poll();
-setInterval(poll, 650);
+setInterval(poll, publicMode ? 1100 : 650);
+
+function verification() {
+  return `<section class="scene verifying">${title('ACTION COMPLETED ≠ OUTCOME RESTORED', 'We check<br><em>the actual outcome.</em>', 'A successful tool call isn’t enough. Steward verifies what changed.')}<div class="verification-checks">${[
+    ['TRAVEL', 'Confirmed flight and one payment'],
+    ['TIME', '9 AM commitment protected'],
+    ['PEOPLE', 'Sarah’s sandbox inbox updated'],
+    ['RESOURCES', '31,000 miles available'],
+    ['MONEY', '$412 cash returned once'],
+    ['AUTHORITY', 'One approval. Approved scope only.'],
+  ]
+    .map(
+      ([label, text]) =>
+        `<div><span class="check">✓</span><strong>${label}</strong><p>${text}</p></div>`,
+    )
+    .join(
+      '',
+    )}</div><div class="receiving-status"><span class="pulse-ring"></span> Verifying persisted resource state.</div></section>`;
+}
+function stopped() {
+  return `<section class="scene">${title('AUTHORITY WITHDRAWN', 'Steward has<br><em>stopped.</em>', 'No further actions will execute. Completed sandbox actions remain recorded.')}<button class="primary" id="again">Return to calm <span>↗</span></button></section>`;
+}
+document.querySelector('#stop').addEventListener('click', async () => {
+  if (!run || run.state === 'RESOLVED') return;
+  try {
+    const response = await apiFetch(`${api}/${run.id}/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!response.ok) throw Error();
+    await poll();
+  } catch {
+    toast('Could not stop the workflow. Check the connection.');
+  }
+});
+document.querySelector('#constitution-toggle').addEventListener('click', async () => {
+  const panel = document.querySelector('#constitution');
+  panel.hidden = !panel.hidden;
+  if (panel.hidden) return;
+  try {
+    const c =
+      run?.constitution ||
+      (await (await fetch(publicMode ? '/sandbox/api/constitution' : '/api/constitution')).json());
+    document.querySelector('#constitution-content').innerHTML =
+      `<p class="mandate-intro">Maximum intelligence. Minimum necessary authority.</p>${[
+        ['PROTECT', c.protect],
+        ['OPTIMIZE', c.optimize],
+        ['MAY ACT AUTONOMOUSLY', c.autonomous],
+        ['MUST ASK', c.mustAsk],
+        ['NEVER', c.never],
+      ]
+        .map(
+          ([title, items]) =>
+            `<div class="mandate-section"><h4>${title}</h4><ul>${items.map((item) => `<li>${escape(item)}</li>`).join('')}</ul></div>`,
+        )
+        .join(
+          '',
+        )}<div class="mandate-note">Read-only mandate · Policy v${c.version}<br>Steward cannot modify its constitution or expand its authority.</div><p class="acronym">Sense · Think · Evaluate · Watch · Act · Resolve · Defend</p>`;
+  } catch {
+    document.querySelector('#constitution-content').textContent =
+      'Mandate unavailable. No additional authority granted.';
+  }
+});
+document
+  .querySelector('#constitution-close')
+  .addEventListener('click', () => (document.querySelector('#constitution').hidden = true));
+
+function error() {
+  return `<section class="scene">${title('OUTCOME NOT YET VERIFIED', 'Steward has<br><em>paused safely.</em>', publicMode ? 'Start a fresh private world to try again.' : 'Approved work and completed actions are preserved. Replay is ready.')}<button class="primary" id="recover">${publicMode ? 'Start fresh world' : 'Switch to replay'} <span>↗</span></button></section>`;
+}

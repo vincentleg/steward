@@ -1,17 +1,20 @@
 import http from 'node:http';
+import { CONSTITUTION } from './src/core/constitution.js';
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
+import { join } from 'node:path';
 import { Store } from './src/store.js';
 import { Workflow } from './src/workflow.js';
 import { signApproval, validateApproval } from './src/approval.js';
 import { sendApproval, sendWorkflowMessage, sendCancellation, mailConfigured } from './src/mail.js';
 const port = Number(process.env.PORT || 3000);
-const store = new Store();
-mkdirSync('.data', { recursive: true });
+const dataDir = process.env.DATA_DIR || '.data';
+const store = new Store(join(dataDir, 'runs.json'));
+mkdirSync(dataDir, { recursive: true });
 const secret =
   process.env.APPROVAL_SECRET ||
   (() => {
-    const p = '.data/approval-secret';
+    const p = join(dataDir, 'approval-secret');
     if (existsSync(p)) return readFileSync(p, 'utf8');
     const s = randomBytes(32).toString('hex');
     writeFileSync(p, s, { mode: 0o600 });
@@ -56,6 +59,15 @@ const server = http.createServer(async (req, res) => {
       req.headers.origin !== `http://${req.headers.host}`
     )
       return json(res, 403, { error: 'Origin not allowed' });
+    if (req.method === 'GET' && url.pathname === '/api/constitution')
+      return json(res, 200, CONSTITUTION);
+    const stopMatch = url.pathname.match(/^\/api\/runs\/([a-f0-9-]{36})\/stop$/);
+    if (req.method === 'POST' && stopMatch) {
+      const run = store.runs.get(stopMatch[1]);
+      if (!run) return json(res, 404, { error: 'Run not found' });
+      workflow.stop(run);
+      return json(res, 200, { stopped: true });
+    }
     if (req.method === 'GET' && url.pathname === '/api/health')
       return json(res, 200, {
         ok: true,

@@ -24,4 +24,8 @@ Record desktop plus an actual phone insert. The included silent replay is a stag
 - Capture actual AgentMail receipt and physical phone approval when configured; never replace this proof with the simulated replay without labeling it.
 - Export 1080p MP4 with clear narration, no distracting music, under 3:00.
 - Review the uploaded file’s duration and audio before submission.
-- Submission upload and final narrated video still require presenter recording and the hackathon submission destination.
+- Submission upload requires the actual hackathon submission destination. A generated narrated draft is available at `docs/submission-demo.mp4`; it uses local synthetic narration and recorded public browser approval. It explicitly distinguishes that footage from separately verified physical-iPhone LIVE tests. An actual phone insert can improve the final cut, but must hide personal information.
+
+## Reproducible generated cut
+
+`node --env-file-if-exists=.env scripts/public-smoke.js` records the complete public HTTPS flow and verifies its final state. `node scripts/build-submission.js` creates a narrated MP4 using local macOS speech and the bundled open-source encoder. It rejects a duration over 180 seconds. Neither script uses a paid service. The original `docs/replay.webm` is never overwritten.
