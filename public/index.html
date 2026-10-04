@@ -14,14 +14,23 @@
   <body>
     <div class="app-shell">
       <header>
-        <a class="brand" href="/" aria-label="Steward home"
-          >STEW<span class="brand-a">A</span>RD<span class="brand-dot">●</span></a
-        >
+        <div class="brand-lockup">
+          <a class="brand" href="/" aria-label="Steward home"
+            >STEW<span class="brand-a">A</span>RD<span class="brand-dot">●</span></a
+          >
+          <div class="brand-definition">
+            Sense · Think · Evaluate · Watch · Act · Resolve · Defend
+          </div>
+        </div>
         <div class="header-center"><span class="status-dot"></span> PERSONAL OPERATIONS, ON.</div>
         <div class="profile">
           <span class="avatar">V</span><span>Vincent <span class="subtle">/ Personal</span></span>
         </div>
       </header>
+      <div id="story" class="story-caption" aria-live="polite">
+        <span id="story-stage"></span>
+        <p id="story-text"></p>
+      </div>
       <main id="main" aria-live="polite"></main>
       <footer>
         <span>WHEN PLANS BREAK, STEWARD FIXES THEM.</span>

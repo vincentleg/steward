@@ -8,9 +8,14 @@ for (let iteration = 1; iteration <= 2; iteration++)
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/');
     await expect(page.getByText('NO DECISIONS NEED YOU.')).toBeVisible();
+    await expect(page.locator('.brand-definition')).toHaveText(
+      'Sense · Think · Evaluate · Watch · Act · Resolve · Defend',
+    );
+    await expect(page.getByText('ONE PERSONAL WORLD STATE', { exact: true })).toBeVisible();
     if (iteration === 1) await page.screenshot({ animations: 'disabled', path: 'docs/calm.png' });
     await page.getByRole('button', { name: 'See Steward take over' }).click();
     await expect(page.getByText('Flight cancelled.', { exact: true })).toBeVisible();
+    await expect(page.locator('#story-text')).toContainText('one cancellation affected');
     if (iteration === 1) await page.screenshot({ animations: 'disabled', path: 'docs/bloom.png' });
     await expect(page.getByRole('link', { name: 'Approve Steward’s plan' })).toBeVisible({
       timeout: 25000,
@@ -55,6 +60,7 @@ for (let iteration = 1; iteration <= 2; iteration++)
       timeout: 25000,
     });
     await expect(page.getByText('$412 CASH REFUNDED', { exact: true })).toBeVisible();
+    await expect(page.getByText('0 decisions need you', { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByText('OUTCOME RESTORED ✓', { exact: true })).toBeVisible();
     if (iteration === 1)

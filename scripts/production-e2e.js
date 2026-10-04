@@ -20,6 +20,10 @@ try {
       await page.goto(origin, { timeout: 120000 });
       await page.getByRole('button', { name: 'See Steward take over' }).waitFor();
       assert.equal(
+        await page.locator('.brand-definition').textContent(),
+        'Sense · Think · Evaluate · Watch · Act · Resolve · Defend',
+      );
+      assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         true,
       );
@@ -96,6 +100,11 @@ try {
   await Promise.all(pages.map((p) => p.reload()));
   await Promise.all(
     pages.map((p) =>
+      p.getByText('VERIFYING OUTCOME…', { exact: true }).waitFor({ timeout: 120000 }),
+    ),
+  );
+  await Promise.all(
+    pages.map((p) =>
       p.getByText('OUTCOME RESTORED ✓', { exact: true }).waitFor({ timeout: 120000 }),
     ),
   );
@@ -139,6 +148,17 @@ try {
       true,
     );
   }
+  await pages[0].getByRole('button', { name: 'Reset', exact: true }).click();
+  await pages[0].getByText('NO DECISIONS NEED YOU.', { exact: true }).waitFor();
+  await pages[0].getByRole('button', { name: 'See Steward take over' }).click();
+  await pages[0].waitForFunction(
+    (previous) =>
+      sessionStorage.getItem('steward-public-run') &&
+      sessionStorage.getItem('steward-public-run') !== previous,
+    sessions[0].id,
+  );
+  await pages[0].getByRole('button', { name: 'Stop', exact: true }).click();
+  await pages[0].getByText('AUTHORITY WITHDRAWN', { exact: true }).waitFor();
   const assets = await Promise.all(
     ['/sandbox', '/sandbox/app.js', '/style.css'].map(async (path) =>
       (await fetch(origin + path)).text(),
@@ -167,6 +187,7 @@ try {
         reload: true,
         duplicateApproval: true,
         privateRoutesDenied: true,
+        resetAndRestart: true,
         secretsAbsent: true,
         at: new Date().toISOString(),
         results,
@@ -177,7 +198,7 @@ try {
     { mode: 0o600 },
   );
   console.log(
-    'PASS: deployed HTTPS desktop + mobile, two isolated sessions, approval, negotiation, verification, reload, duplicate approval, denied private routes, malformed requests and secret scan.',
+    'PASS: deployed HTTPS desktop + mobile, two isolated sessions, approval, negotiation, verification, reload, reset/restart, duplicate approval, denied private routes, malformed requests and secret scan.',
   );
 } finally {
   await browser.close();

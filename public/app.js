@@ -61,9 +61,9 @@ const title = (label, heading, description = '') =>
   `<div class="section-heading"><div class="eyebrow"><span class="tiny-line"></span>${label}</div><h1>${heading}</h1>${description ? `<p>${description}</p>` : ''}</div>`;
 function calm() {
   return `<section class="calm scene">${title('YOUR WORLD IS STABLE', 'Your life is handled.')}<div class="calm-center"><div class="decision-count" aria-label="Zero decisions">0</div><div class="calm-status">NO DECISIONS NEED YOU.</div><p>YOUR WORLD IS STABLE</p><button class="primary" id="trigger">See Steward take over <span>↗</span></button><div class="trigger-note">${publicMode ? 'No account. No personal data. No connected accounts.' : 'One event. Six consequences. One decision.'}</div></div><div class="watching-grid">${[
-    ['01', 'TRAVEL', 'SFO → JFK', '6:40 PM tonight', '↗'],
-    ['02', 'CALENDAR', 'Sarah · 9 AM', 'Tomorrow’s priority', '◷'],
-    ['03', 'REWARDS', '31,000 miles', 'December trip protected', '✳'],
+    ['01', 'TIME', '9 AM commitment', 'Tomorrow’s priority', '◷'],
+    ['02', 'PEOPLE', 'Sarah', 'A commitment to keep', '◎'],
+    ['03', 'RESOURCES', '31,000 miles', 'December trip protected', '✳'],
     ['04', 'MONEY', '$412 fare', 'Refund rights watched', '$'],
   ]
     .map(
@@ -72,12 +72,18 @@ function calm() {
     )
     .join(
       '',
-    )}</div><div class="domain-strip"><span>YOUR WORLD</span><b>TRAVEL</b><b>MONEY</b><b>TIME</b><b>PEOPLE</b><span class="concept-domains">PURCHASES · BENEFITS · HOME <small>CONCEPT</small></span></div></section>`;
+    )}</div><div class="world-state-domains"><div class="world-state-label">ONE PERSONAL WORLD STATE</div><div class="world-domains">${['TIME', 'MONEY', 'TRAVEL', 'COMMITMENTS', 'PEOPLE', 'OPPORTUNITIES', 'PURCHASES', 'BENEFITS', 'HOME', 'ADMIN', 'WORK', 'RESOURCES'].map((d) => `<span>${d}</span>`).join('')}</div><p>Travel recovery is today’s functional capability. Other capabilities are previews.</p></div></section>`;
 }
 const nodes = [
   ['TRAVEL', 'Searching alternatives…', '7 alternatives checked', 'alternatives.found', '↗'],
-  ['CALENDAR', 'Checking tomorrow…', '9 AM conflict found', 'calendar.conflict_found', '◷'],
-  ['PEOPLE', 'Sarah is affected', 'Update prepared', 'economics.calculated', '◎'],
+  [
+    'TIME / COMMITMENT',
+    'Checking tomorrow…',
+    '9 AM conflict found',
+    'calendar.conflict_found',
+    '◷',
+  ],
+  ['PEOPLE / SARAH', 'Sarah is affected', 'Update prepared', 'economics.calculated', '◎'],
   ['MONEY', 'Checking original fare…', '$412 refundable', 'economics.calculated', '$'],
   ['REWARDS', 'Valuing your miles…', 'Preserve 31K miles', 'economics.calculated', '✳'],
   ['RIGHTS', 'Checking refund policy…', 'Cash refund protected', 'economics.calculated', '◇'],
@@ -86,7 +92,7 @@ function receiving() {
   return `<section class="scene receiving-scene">${title('EVENT TRANSPORT', 'Your agent is<br><em>on it.</em>', 'Receiving the flight cancellation from the sandbox airline.')}<div class="receiving-status"><span class="pulse-ring"></span> Waiting for the event. Your context is ready.</div></section>`;
 }
 function bloom() {
-  return `<section class="scene bloom">${title('WORLD STATE DEVIATION DETECTED', 'One change.<br><em>Six consequences.</em>', 'Steward is connecting the things this flight affects.')}<div class="graph"><svg class="graph-lines" viewBox="0 0 900 400" preserveAspectRatio="none" aria-hidden="true"><path d="M450 200L165 66 M450 200L450 45 M450 200L735 66 M450 200L735 334 M450 200L450 355 M450 200L165 334"/></svg><div class="graph-core"><span class="cancel-icon">↗</span><span class="eyebrow">AIRLINE EVENT RECEIVED</span><h2>Flight cancelled.</h2><p>SFO → JFK <span>·</span> 6:40 PM</p><div class="core-label">STEWARD TAKING OVER</div></div>${nodes.map(([name, processing, done, type, icon], i) => `<div class="consequence node-${i} ${has(type) ? 'complete' : ''}" style="--i:${i}"><div class="node-title"><span class="node-symbol">${icon}</span>${name}<span class="node-indicator">${has(type) ? '✓' : '·'}</span></div><p>${has(type) ? done : processing}</p></div>`).join('')}</div><div class="processing-footer"><span class="pulse-ring"></span> ${has('economics.calculated') ? 'Constraints checked. Economics calculated.' : 'Reading context. Finding a way forward.'}<span class="processing-count">${nodes.filter((n) => has(n[3])).length} / 6 CONNECTED</span></div></section>`;
+  return `<section class="scene bloom">${title('WORLD STATE DEVIATION DETECTED', 'One change.<br><em>Six consequences.</em>', 'One event puts arrival, tomorrow’s commitment and future resources at risk.')}<div class="graph"><svg class="graph-lines" viewBox="0 0 900 400" preserveAspectRatio="none" aria-hidden="true"><path d="M450 200L165 66 M450 200L450 45 M450 200L735 66 M450 200L735 334 M450 200L450 355 M450 200L165 334"/></svg><div class="graph-core"><span class="cancel-icon">↗</span><span class="eyebrow">AIRLINE EVENT RECEIVED</span><h2>Flight cancelled.</h2><p>SFO → JFK <span>·</span> 6:40 PM</p><div class="core-label">STEWARD TAKING OVER</div></div>${nodes.map(([name, processing, done, type, icon], i) => `<div class="consequence node-${i} ${has(type) ? 'complete' : ''}" style="--i:${i}"><div class="node-title"><span class="node-symbol">${icon}</span>${name}<span class="node-indicator">${has(type) ? '✓' : '·'}</span></div><p>${has(type) ? done : processing}</p></div>`).join('')}</div><div class="processing-footer"><span class="pulse-ring"></span> ${has('economics.calculated') ? 'Constraints checked. Economics calculated.' : 'Reading context. Finding a way forward.'}<span class="processing-count">${nodes.filter((n) => has(n[3])).length} / 6 CONNECTED</span></div></section>`;
 }
 function options() {
   return `<section class="scene options">${title('SIMULATING POSSIBLE FUTURES', 'Six consequences.<br><em>One way forward.</em>')}<div class="compression"><span>6 <small>CONSEQUENCES</small></span><b>→</b><span>3 <small>FUTURES</small></span><b>→</b><span class="accent">1 <small>DECISION</small></span></div><div class="options-grid">${run.decision.options.map((o) => `<article class="option ${o.id === 'B' ? 'recommended' : ''}"><div class="option-top"><span>FUTURE ${o.id}</span><span>${o.id === 'B' ? 'RECOMMENDED' : o.id === 'A' ? 'MEETING CONFLICT' : 'POOR VALUE'}</span></div><h3>${o.label}</h3><p>${o.departure}</p><div class="option-price">${o.id === 'C' ? '31,000' : o.id === 'A' ? '$0' : '+$92'} <small>${o.id === 'C' ? 'MILES' : 'NET'}</small></div><div class="option-reason">${o.id === 'B' ? check : '<span class="dim-cross">×</span>'}${o.reason}</div>${o.id === 'B' ? '<div class="option-math">$504 new fare − $412 refund = $92</div>' : ''}</article>`).join('')}</div><div class="options-bottom"><span class="pulse-ring"></span> Compressing the rest into one approval.</div></section>`;
@@ -94,7 +100,7 @@ function options() {
 function decision() {
   const delivery = run.delivery;
   const emailed = delivery?.channel === 'email';
-  return `<section class="scene decision-scene"><div class="decision-intro">${title('ONE DECISION NEEDS YOU', 'Keep your plans.<br><em>We’ll do the rest.</em>', 'One outcome to protect.<br>Every consequence accounted for.')}<div class="decision-summary"><div><strong>6</strong><span>CONSEQUENCES</span></div><b>→</b><div><strong>3</strong><span>FUTURES</span></div><b>→</b><div><strong class="accent">1</strong><span>DECISION</span></div></div><div class="approval-channel"><span class="phone-icon">▯</span><div><strong>${run.mode === 'replay' ? 'Replay approval arriving…' : publicMode ? 'The judgment is yours.' : emailed ? 'Sent to your phone.' : delivery?.error ? 'Email unavailable. Local approval ready.' : 'Ready for your approval.'}</strong><p>${run.mode === 'replay' ? 'Automatic simulated approval · stage safety mode' : publicMode ? 'Approve here. No email or account needed.' : emailed ? 'Check your email. One tap and we take over.' : 'Open the secure approval page to continue.'}</p></div></div></div><article class="decision-card"><div class="recommendation-label"><span>✳</span> STEWARD RECOMMENDS</div><h2>Get home<br>tonight.</h2><p class="flight-detail">Alternative flight <span>·</span> 9:40 PM <span>↗</span></p><div class="decision-price"><span>+$92</span><div>NET INCREMENTAL<br><small>$504 fare − $412 refund</small></div></div><ul class="benefits"><li>9 AM meeting preserved</li><li>31,000 miles preserved</li><li>$412 refund protected</li></ul>${run.mode === 'replay' ? '<button class="primary" disabled>Awaiting replay approval <span>◷</span></button>' : publicMode ? `<button class="primary" id="approve-public">Approve Steward’s plan <span>↗</span></button>` : `<a class="primary" href="${escape(run.approvalUrl || '#')}" target="_blank" rel="noopener">Approve Steward’s plan <span>↗</span></a>`}<div class="card-footnote">One approval. Everything else is on us.</div></article></section>`;
+  return `<section class="scene decision-scene"><div class="decision-intro">${title('ONE DECISION NEEDS YOU', 'Keep your plans.<br><em>We’ll do the rest.</em>', 'One outcome to protect.<br>Every consequence accounted for.')}<div class="decision-summary"><div><strong>6</strong><span>CONSEQUENCES</span></div><b>→</b><div><strong>3</strong><span>FUTURES</span></div><b>→</b><div><strong class="accent">1</strong><span>DECISION</span></div></div><div class="approval-channel"><span class="phone-icon">▯</span><div><strong>${run.mode === 'replay' ? 'Replay approval arriving…' : publicMode ? 'The judgment is yours.' : emailed ? 'Sent to your phone.' : delivery?.error ? 'Email unavailable. Local approval ready.' : 'Ready for your approval.'}</strong><p>${run.mode === 'replay' ? 'Automatic simulated approval · stage safety mode' : publicMode ? 'Approve here. No email or account needed.' : emailed ? 'Check your email. One tap and we take over.' : 'Open the secure approval page to continue.'}</p></div></div></div><article class="decision-card"><div class="recommendation-label"><span>✳</span> STEWARD RECOMMENDS</div><h2>Get home<br>tonight.</h2><p class="flight-detail">Alternative flight <span>·</span> 9:40 PM <span>↗</span></p><div class="decision-price"><span>+$92</span><div>NET INCREMENTAL<br><small>$504 fare − $412 refund</small></div></div><ul class="benefits"><li>9 AM commitment preserved</li><li>31,000 miles preserved</li><li>$412 refund rights protected</li></ul>${run.mode === 'replay' ? '<button class="primary" disabled>Awaiting replay approval <span>◷</span></button>' : publicMode ? `<button class="primary" id="approve-public">Approve Steward’s plan <span>↗</span></button>` : `<a class="primary" href="${escape(run.approvalUrl || '#')}" target="_blank" rel="noopener">Approve Steward’s plan <span>↗</span></a>`}<div class="card-footnote">One approval. Everything else is on us.<br>Sandbox actions. No real purchases.</div></article></section>`;
 }
 const lanes = [
   [
@@ -109,7 +115,7 @@ const lanes = [
     'refund.confirmed',
     ['Prepared', 'Sent', 'Waiting', 'Cash returned'],
   ],
-  ['CALENDAR', 'calendar.updated', 'calendar.updated', ['Updated', 'Meeting safe']],
+  ['COMMITMENT', 'calendar.updated', 'calendar.updated', ['Updated', 'Meeting safe']],
   ['PEOPLE', 'sarah.notified', 'sarah.notified', ['Sarah notified', 'Confirmed']],
   ['WATCH', 'refund.requested', 'exception.resolved', ['Monitoring', 'Cash refund protected']],
 ];
@@ -140,7 +146,7 @@ function offer(p) {
     )
     .join(
       '',
-    )}</div><div class="value-verdict ${evaluated ? 'visible' : ''}"><span>$412 CASH</span> <b>&gt;</b> <span class="credit">$450 CREDIT</span><p>Estimated credit value to you: $158 · 35% expected use</p></div></div></div><div class="rebuttal-bar ${p === 'refund' ? 'refund-success' : ''}"><span>${p === 'refund' ? '✓' : p === 'rebuttal' ? '↗' : '✳'}</span><div><strong>${p === 'refund' ? '$412 CASH REFUND APPROVED' : p === 'rebuttal' ? 'CREDIT REJECTED. CASH REQUESTED.' : evaluated ? 'CASH WINS. STEWARD IS RESPONDING.' : 'LARGER DOESN’T ALWAYS MEAN BETTER.'}</strong><p>${p === 'refund' ? 'Returned to your original payment method.' : p === 'rebuttal' ? '“Please return the $412 to the original payment method.”' : evaluated ? 'Your preferences and refund policy support cash. No second approval needed.' : 'Comparing flexibility, expiration, expected use, and refund policy.'}</p></div><span class="rebuttal-status">${p === 'refund' ? 'CONFIRMED' : p === 'rebuttal' ? 'SENT ✓' : 'AUTONOMOUS'}</span></div></section>`;
+    )}</div><div class="value-verdict ${evaluated ? 'visible' : ''}"><span>$412 CASH</span> <b>&gt;</b> <span class="credit">$450 CREDIT</span><p>Expected value to you: $158 · Seeded 35% use assumption</p></div></div></div><div class="rebuttal-bar ${p === 'refund' ? 'refund-success' : ''}"><span>${p === 'refund' ? '✓' : p === 'rebuttal' ? '↗' : '✳'}</span><div><strong>${p === 'refund' ? '$412 CASH REFUND APPROVED' : p === 'rebuttal' ? 'STEWARD REJECTED THE OFFER. CASH REQUESTED.' : evaluated ? 'CASH WINS. STEWARD IS RESPONDING.' : 'LARGER DOESN’T ALWAYS MEAN BETTER.'}</strong><p>${p === 'refund' ? 'Confirmed by the sandbox airline and payment ledger.' : p === 'rebuttal' ? '“Please return the $412 to the original payment method.”' : evaluated ? 'Your preferences and refund policy support cash. No second approval needed.' : 'Comparing flexibility, expiration, expected use, and refund policy.'}</p></div><span class="rebuttal-status">${p === 'refund' ? 'CONFIRMED' : p === 'rebuttal' ? 'SENT ✓' : 'AUTONOMOUS'}</span></div></section>`;
 }
 function resolved() {
   return `<section class="scene resolved">${title('OUTCOME RESTORED ✓', 'Your life is<br><em>handled.</em>', 'One cancellation. Six consequences. Zero loose ends.')}<div class="resolution-mark">✓</div><div class="resolution-grid">${[
@@ -155,7 +161,32 @@ function resolved() {
     )
     .join(
       '',
-    )}</div><div class="verification-summary">${run.outcome?.verified ? '6 outcome checks passed. Action receipts independently verified.' : 'Booking, calendar, notification and refund confirmed.'}</div><div class="handled-tally"><div><strong>6</strong><span>consequences</span></div><div><strong>${run.events.filter((e) => ['booking.completed', 'calendar.updated', 'sarah.notified', 'refund.requested', 'offer.evaluated', 'rebuttal.sent', 'refund.confirmed', 'outcome.verified'].includes(e.type)).length}</strong><span>verified milestones</span></div><div><strong>1</strong><span>human decision</span></div></div><div class="final-line"><span>ONE HUMAN DECISION.</span><b>Everything else, handled.</b></div><button class="text-button" id="again">Return to calm <span>↗</span></button></section>`;
+    )}</div><div class="verification-summary">${run.outcome?.verified ? '6 outcome checks passed. Action receipts independently verified.' : 'Booking, calendar, notification and refund confirmed.'}</div><div class="handled-tally"><div><strong>6</strong><span>consequences</span></div><div><strong>${run.events.filter((e) => ['booking.completed', 'calendar.updated', 'sarah.notified', 'refund.requested', 'offer.evaluated', 'rebuttal.sent', 'refund.confirmed', 'outcome.verified'].includes(e.type)).length}</strong><span>verified milestones</span></div><div><strong>1</strong><span>human decision</span></div></div><div class="final-line"><span>ONE HUMAN DECISION.</span><b>Everything else, handled.</b></div><div class="restored-calm"><span class="status-dot"></span> YOUR WORLD IS STABLE <b>0 decisions need you</b></div><button class="text-button" id="again">Return to calm <span>↗</span></button></section>`;
+}
+const story = {
+  calm: ['01 / WORLD STATE', 'One intelligence. One model of your world.'],
+  receiving: ['02 / EXTERNAL EVENT', 'The world changed. No prompt required.'],
+  bloom: ['03 / IMPACT GRAPH', 'It understood what one cancellation affected.'],
+  options: ['04 / POSSIBLE FUTURES', 'It evaluated outcomes, not just prices.'],
+  decision: ['05 / DECISION COMPRESSION', 'Six consequences became one decision.'],
+  execution: ['06 / HANDS OFF', 'I approved once. Steward is handling the rest.'],
+  offer: ['07 / COUNTERPARTY RESPONSE', 'An offer that looked better created a second problem.'],
+  evaluation: ['08 / WORTH TO YOU', '$450 on paper. $158 in expected value to you.'],
+  rebuttal: [
+    '09 / AUTONOMOUS NEGOTIATION',
+    'It defended your interests without another interruption.',
+  ],
+  refund: ['10 / CASH CONFIRMED', 'The action completed. Steward still checks the outcome.'],
+  verification: ['11 / VERIFICATION', 'It verifies the result before declaring success.'],
+  resolved: ['12 / WORLD RESTORED', 'One human decision. Everything else, handled.'],
+  stopped: ['STOP CONTROL', 'Your mandate controls what Steward may do.'],
+  error: ['SAFE RECOVERY', 'Your state is preserved. Safe recovery is available.'],
+};
+function renderStory(p) {
+  const [stage, text] = story[p] || story.calm;
+  if (document.querySelector('#story-text').textContent === text) return;
+  document.querySelector('#story-stage').textContent = stage;
+  document.querySelector('#story-text').textContent = text;
 }
 function render() {
   document.querySelector('#mode').textContent = !connected
@@ -167,6 +198,7 @@ function render() {
         : 'SANDBOX WORLD · LIVE AGENT';
   document.querySelector('#stop').hidden = !run || run.state === 'RESOLVED' || run.stopped;
   const p = phase();
+  renderStory(p);
   const revision = `${run?.id}:${run?.events.length}:${p}`;
   if (revision === lastRevision) return;
   lastRevision = revision;
@@ -395,7 +427,7 @@ await poll();
 setInterval(poll, publicMode ? 1100 : 650);
 
 function verification() {
-  return `<section class="scene verifying">${title('ACTION COMPLETED ≠ OUTCOME RESTORED', 'We check<br><em>the actual outcome.</em>', 'A successful tool call isn’t enough. Steward verifies what changed.')}<div class="verification-checks">${[
+  return `<section class="scene verifying">${title('VERIFYING OUTCOME…', 'We check<br><em>the actual outcome.</em>', 'A successful tool call isn’t enough. Steward verifies what changed.')}<div class="verification-checks">${[
     ['TRAVEL', 'Confirmed flight and one payment'],
     ['TIME', '9 AM commitment protected'],
     ['PEOPLE', 'Sarah’s sandbox inbox updated'],
@@ -405,7 +437,7 @@ function verification() {
   ]
     .map(
       ([label, text]) =>
-        `<div><span class="check">✓</span><strong>${label}</strong><p>${text}</p></div>`,
+        `<div>${run.outcome?.verified ? check : '<span class="pulse-ring"></span>'}<strong>${label}</strong><p>${text}</p></div>`,
     )
     .join(
       '',
