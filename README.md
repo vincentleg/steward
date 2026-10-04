@@ -34,7 +34,7 @@ Copy `.env.example` to `.env` and configure:
 | `PORT`              | Server port; defaults to 3000                            |
 | `WORKFLOW_PACE`     | Backend presentation pacing; defaults to 1               |
 
-The communication identity is **steward-agent@agentmail.to**. No inbox is created. Configured live runs send a sandbox cancellation through that inbox, await a matching received message, validate its fixed payload, then send the approval email. Only generated protocol messages are interpreted; unrelated email is never an instruction.
+The communication identity is **steward-agent@agentmail.to**. No inbox is created. Configured live runs store a sandbox cancellation message through that inbox, read the exact server-issued message ID, validate its fixed payload, then send the approval email. Self-addressed messages remain labeled sent, so this is a verified mailbox event, not an inbound airline email. The service footer is excluded when parsing the single-line JSON protocol. Only generated protocol messages are interpreted; unrelated email is never an instruction.
 
 The approval URL carries the run ID, decision ID, expiry, and HMAC-SHA256 signature. Opening the link does **not** approve it; the phone displays the plan and the user explicitly taps the approval button. This prevents email scanners from authorizing actions. The POST is idempotent. The desktop polls its durable run every 650 ms and resumes without laptop interaction.
 

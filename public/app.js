@@ -216,7 +216,7 @@ function reset() {
   render();
 }
 const labels = {
-  'communication.event_received': 'Cancellation email received · AgentMail',
+  'communication.event_received': 'Cancellation event verified · AgentMail',
   'communication.degraded': 'Email transport unavailable · direct sandbox event',
   'flight.cancelled': 'Cancellation received',
   'context.loaded': 'Life context loaded',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { sendApproval, sendCancellation, mailConfigured } from '../src/mail.js';
 import { Store } from '../src/store.js';
 
-test('official AgentMail SDK serializes approval and receives fixed cancellation protocol', async () => {
+test('official AgentMail SDK serializes approval and verifies cancellation with service footer', async () => {
   const originalFetch = globalThis.fetch;
   const keys = ['AGENTMAIL_API_KEY', 'APPROVAL_EMAIL', 'PUBLIC_BASE_URL'];
   const original = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
@@ -17,28 +17,30 @@ test('official AgentMail SDK serializes approval and receives fixed cancellation
     calls.push({ url, method: init.method, body: init.body ? JSON.parse(init.body) : undefined });
     let response;
     if (init.method === 'POST') response = { message_id: 'msg-test', thread_id: 'thread-test' };
-    else if (url.includes('/messages/msg-received'))
+    else if (url.includes('/messages/msg-test'))
       response = {
         inbox_id: 'steward-agent@agentmail.to',
-        message_id: 'msg-received',
+        message_id: 'msg-test',
         thread_id: 'thread-test',
-        labels: ['received'],
+        labels: ['sent'],
         timestamp: new Date().toISOString(),
         from: 'steward-agent@agentmail.to',
         to: ['steward-agent@agentmail.to'],
         size: 100,
         updated_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
-        text: JSON.stringify({ type: 'flight.cancelled', runId: r.id, sandbox: true }),
+        text:
+          JSON.stringify({ type: 'flight.cancelled', runId: r.id, sandbox: true }) +
+          '\n\n--\nSent via AgentMail',
       };
     else
       response = {
         count: 1,
         messages: [
           {
-            message_id: 'msg-received',
+            message_id: 'msg-test',
             subject: `[STEWARD SANDBOX] Flight cancelled ${r.id}`,
-            labels: ['received'],
+            labels: ['sent'],
           },
         ],
       };
@@ -59,7 +61,8 @@ test('official AgentMail SDK serializes approval and receives fixed cancellation
     assert.match(calls[0].body.text, /504.*412.*92/);
     assert.match(calls[0].body.html, /APPROVE STEWARD/);
     const cancellation = await sendCancellation(r);
-    assert.equal(cancellation.messageId, 'msg-received');
+    assert.equal(cancellation.messageId, 'msg-test');
+    assert.equal(cancellation.mailboxDirection, 'sent');
     assert.equal(cancellation.channel, 'agentmail');
     assert.equal(calls.at(-1).method, 'GET');
     assert.ok(

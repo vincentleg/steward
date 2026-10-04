@@ -73,24 +73,17 @@ export async function sendCancellation(run) {
     },
     { idempotencyKey: `steward-cancel-${run.id}` },
   );
-  let received;
-  const deadline = Date.now() + 12000;
-  while (Date.now() < deadline) {
-    const page = await getClient().inboxes.messages.list(inbox, {
-      limit: 20,
-      subject: [subject],
-      from: [inbox],
-    });
-    received = page.messages.find((m) => m.subject === subject && m.labels.includes('received'));
-    if (received) break;
-    await new Promise((resolve) => setTimeout(resolve, 800));
-  }
-  if (!received) throw Error('AgentMail cancellation delivery not confirmed');
-  const message = await getClient().inboxes.messages.get(inbox, received.messageId);
+  // Self-addressed mail is stored as sent by AgentMail, rather than delivered
+  // as a second received message. Read the exact server-issued message ID;
+  // that generated mailbox message is the sandbox airline's event transport.
+  const message = await getClient().inboxes.messages.get(inbox, result.messageId);
   const content = message.extractedText ?? message.text;
+  const protocol = String(content ?? '')
+    .split(/\r?\n/)[0]
+    .trim();
   let payload;
   try {
-    payload = JSON.parse(content);
+    payload = JSON.parse(protocol);
   } catch {
     throw Error('Cancellation event payload unavailable');
   }
@@ -101,5 +94,7 @@ export async function sendCancellation(run) {
     messageId: message.messageId,
     threadId: message.threadId,
     source: 'Sandbox airline · AgentMail event',
+    evidence: 'Generated cancellation message verified through AgentMail API',
+    mailboxDirection: message.labels?.includes('received') ? 'received' : 'sent',
   };
 }
