@@ -107,6 +107,7 @@ export class PrivateStore {
     return token;
   }
   owner(token) {
+    this.db.prepare('DELETE FROM sessions WHERE expires<=?').run(this.now());
     if (typeof token !== 'string' || token.length > 128) return null;
     return (
       this.db

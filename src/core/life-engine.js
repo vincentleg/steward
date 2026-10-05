@@ -194,6 +194,14 @@ export class LifeEngine {
     if (r) r.state = type;
     return e;
   }
+  async wait(w, r) {
+    if (!w.demo) return sleep(this.pace);
+    let remaining = 1400;
+    while (remaining > 0 && r.state !== 'stopped') {
+      await sleep(100);
+      if (!w.demo.paused) remaining -= 100;
+    }
+  }
   time(w) {
     return this.now() + (w.clockOffsetMinutes || 0) * 60000;
   }
@@ -345,14 +353,14 @@ export class LifeEngine {
     w.activeDeviations.push(r.deviation);
     w.activeResolutions.push({ id: r.id, capability: scenario });
     this.emit(w, r, 'deviation.detected', c.title, { source: c.event });
-    await sleep(this.pace);
+    await this.wait(w, r);
     if (r.state === 'stopped') return r;
     this.emit(w, r, 'impact.understood', 'Understanding connected consequences');
     this.evaluate(w, r);
-    await sleep(this.pace);
+    await this.wait(w, r);
     if (r.state === 'stopped') return r;
     this.emit(w, r, 'futures.simulated', 'Evaluating possible outcomes');
-    await sleep(this.pace);
+    await this.wait(w, r);
     if (r.state === 'stopped') return r;
     this.evaluate(w, r);
     this.emit(w, r, 'authority.checked', 'Checking your rules');
@@ -410,7 +418,7 @@ export class LifeEngine {
     r.intent ||= this.expectedOutcome(r);
     try {
       for (const [i, op] of r.selected.operations.entries()) {
-        await sleep(this.pace);
+        await this.wait(w, r);
         if (r.state === 'stopped') return;
         this.policy(w, r, op);
         const actionId = `${r.id}:${i}`;
@@ -431,7 +439,7 @@ export class LifeEngine {
         this.emit(w, r, 'action.completed', `${op.type.replaceAll('_', ' ')} completed`);
       }
       this.emit(w, r, 'outcome.verifying', 'Verifying the intended outcome');
-      await sleep(this.pace);
+      await this.wait(w, r);
       if (r.state === 'stopped') return;
       this.checkOutcome(w, r);
       if (!r.outcome.verified) return;
@@ -639,6 +647,7 @@ export class LifeEngine {
     }
   }
   monitor(w) {
+    if (w.demo?.paused) return;
     for (const r of w.resolutions)
       if (
         r.pendingRefund &&
@@ -711,7 +720,7 @@ export class LifeEngine {
   }
   async negotiate(w, r, op, id) {
     this.emit(w, r, 'provider.contacted', `Refund requested from ${r.provider}`);
-    await sleep(this.pace);
+    await this.wait(w, r);
     if (r.state === 'stopped') throw Error('Stopped');
     if (r.scenario === 'travel') {
       r.offer = {
@@ -721,7 +730,7 @@ export class LifeEngine {
         assumptions: ['Airline locked', 'Expires', 'Seeded expected airline use'],
       };
       this.emit(w, r, 'counteroffer.received', '$450 airline credit offered');
-      await sleep(this.pace);
+      await this.wait(w, r);
       if (r.state === 'stopped') throw Error('Stopped');
       r.offer.accepted = r.offer.creditWorth > 412;
       this.emit(
@@ -741,11 +750,11 @@ export class LifeEngine {
         return;
       }
       this.emit(w, r, 'negotiating', 'Credit rejected · cash requested within the mandate');
-      await sleep(this.pace);
+      await this.wait(w, r);
       if (r.state === 'stopped') throw Error('Stopped');
     } else {
       this.emit(w, r, 'provider.responded', 'Provider checked synthetic eligibility');
-      await sleep(this.pace);
+      await this.wait(w, r);
       if (r.state === 'stopped') throw Error('Stopped');
       this.emit(w, r, 'negotiating', 'Refund terms confirmed');
     }

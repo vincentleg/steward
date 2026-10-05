@@ -36,6 +36,11 @@ if (origin) {
     '/life.css',
     '/intelligence-core.js',
     '/intelligence-core.css',
+    '/privacy.js',
+    '/experience.css',
+    '/conversation.js',
+    '/speech.js',
+    '/language-layer.js',
     '/sandbox/app.js',
   ]) {
     const r = await fetch(origin + route);

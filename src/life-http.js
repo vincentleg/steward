@@ -1,3 +1,4 @@
+import { conversationContext } from './core/conversation-context.js';
 import { understandWorld } from './core/world-understanding.js';
 import { intelligenceState } from './core/intelligence-state.js';
 import { readFileSync } from 'node:fs';
@@ -61,6 +62,11 @@ export function lifeService({
         '/intelligence-core.css': ['public/intelligence-core.css', 'text/css'],
         '/life.js': ['public/life.js', 'text/javascript'],
         '/life.css': ['public/life.css', 'text/css'],
+        '/privacy.js': ['public/privacy.js', 'text/javascript'],
+        '/experience.css': ['public/experience.css', 'text/css'],
+        '/conversation.js': ['public/conversation.js', 'text/javascript'],
+        '/speech.js': ['public/speech.js', 'text/javascript'],
+        '/language-layer.js': ['public/language-layer.js', 'text/javascript'],
         '/connections.js': ['public/connections.js', 'text/javascript'],
       };
       if (req.method === 'GET' && assets[url.pathname]) {
@@ -77,7 +83,7 @@ export function lifeService({
         }
         const create = req.method === 'POST' && url.pathname === '/world/api/sessions';
         const match = url.pathname.match(
-          /^\/world\/api\/sessions\/([a-f0-9-]{36})(?:\/(start|approve|change|reset|stop))?$/,
+          /^\/world\/api\/sessions\/([a-f0-9-]{36})(?:\/(start|approve|change|reset|stop|delete|conversation|export|demo))?$/,
         );
         let session;
         if (!create) {
@@ -91,6 +97,16 @@ export function lifeService({
             json(res, 404, { error: 'World not found or expired' });
             return true;
           }
+        }
+        if (req.method === 'GET' && match && ['conversation', 'export'].includes(match[2])) {
+          json(
+            res,
+            200,
+            match[2] === 'conversation'
+              ? conversationContext(session.world, { now: engine.time(session.world) })
+              : { mode: 'synthetic', world: session.world },
+          );
+          return true;
         }
         if (req.method === 'GET' && match && !match[2]) {
           engine.monitor(session.world);
@@ -130,8 +146,10 @@ export function lifeService({
           throw Error('Invalid request');
         const route = create ? 'create' : match[2];
         const keys = {
-          create: [],
+          create: ['demo'],
           reset: [],
+          delete: [],
+          demo: ['paused'],
           start: ['scenario'],
           approve: ['id', 'revision'],
           stop: ['id'],
@@ -144,8 +162,10 @@ export function lifeService({
             json(res, 429, { error: 'Public capacity reached. Try again shortly.' });
             return true;
           }
+          if (input.demo !== undefined && input.demo !== true) throw Error('Invalid demo');
           const world = engine.create(),
             token = randomBytes(32).toString('base64url');
+          if (input.demo) world.demo = { paused: false };
           sessions.set(world.id, { world, token, expires: now() + ttl });
           json(res, 201, {
             world,
@@ -155,6 +175,17 @@ export function lifeService({
           return true;
         }
         const w = session.world;
+        if (route === 'demo') {
+          if (!w.demo || typeof input.paused !== 'boolean') throw Error('Invalid demo control');
+          w.demo.paused = input.paused;
+          w.revision++;
+        } else if (route === 'delete') {
+          for (const r of w.resolutions) engine.stop(w, r.id);
+          engine.worlds.delete(w.id);
+          sessions.delete(w.id);
+          json(res, 200, { deleted: true });
+          return true;
+        }
         if (route === 'start') {
           if (typeof input.scenario !== 'string' || !SCENARIOS.some((s) => s.id === input.scenario))
             throw Error('Unknown scenario');

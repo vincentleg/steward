@@ -72,7 +72,7 @@ await axe('connection search');
 await page.getByRole('button', { name: 'Connect Gmail', exact: true }).click();
 await axe('coming soon');
 await page.keyboard.press('Escape');
-assert.equal(await page.locator('dialog').evaluate((e) => e.open), false);
+assert.equal(await page.locator('#sheet').evaluate((e) => e.open), false);
 assert.equal(await page.evaluate(() => document.activeElement.dataset.connect), 'communication-0');
 await page.locator('nav [data-view=home]').click();
 await context.setOffline(true);

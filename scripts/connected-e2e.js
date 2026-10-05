@@ -59,6 +59,25 @@ try {
       false,
     );
   }
+  await page.getByRole('button', { name: 'Open Steward' }).click();
+  await page.locator('#steward-question').fill('Which commitment is in my world?');
+  await page.getByRole('button', { name: 'Explore evidence →' }).click();
+  await page
+    .getByText('Evidence retrieved. These are source records, not a generated answer.', {
+      exact: true,
+    })
+    .waitFor();
+  assert.ok(
+    await page
+      .locator('#conversation-turns summary')
+      .filter({ hasText: 'A private commitment' })
+      .count(),
+  );
+  await page.screenshot({ path: '.data/experience-proof/private-conversation.png' });
+  await page.getByRole('button', { name: 'Exit conversation' }).click();
+  const exported = await page.evaluate(async () => (await fetch('/account/api/export')).json());
+  assert.ok(JSON.stringify(exported).includes('A private commitment'));
+  assert.equal(JSON.stringify(exported).includes('password'), false);
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.getByRole('heading', { name: 'Your private Steward' }).waitFor();
   assert.equal(await page.getByText('A private commitment').count(), 0);
@@ -71,6 +90,22 @@ try {
     await page.getByRole('button', { name: 'Review permissions' }).first().isDisabled(),
     true,
   );
+  await page.getByRole('button', { name: 'Open Steward' }).click();
+  await page.locator('#steward-question').fill('A private commitment');
+  await page.getByRole('button', { name: 'Explore evidence →' }).click();
+  await page
+    .getByText('Evidence retrieved. These are source records, not a generated answer.', {
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(
+    await page
+      .locator('#conversation-turns summary')
+      .filter({ hasText: 'A private commitment' })
+      .count(),
+    0,
+  );
+  await page.getByRole('button', { name: 'Exit conversation' }).click();
   const incognito = await browser.newContext();
   const incognitoPage = await incognito.newPage();
   await incognitoPage.goto(`${base}/account`);

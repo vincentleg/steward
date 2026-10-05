@@ -1,3 +1,4 @@
+import { conversationContext } from '../core/conversation-context.js';
 import { understandWorld } from '../core/world-understanding.js';
 import { intelligenceState } from '../core/intelligence-state.js';
 import http from 'node:http';
@@ -58,6 +59,11 @@ export function privateSurface({
           '/account.css',
           '/intelligence-core.js',
           '/intelligence-core.css',
+          '/privacy.js',
+          '/experience.css',
+          '/conversation.js',
+          '/speech.js',
+          '/language-layer.js',
         ].includes(url.pathname)
       ) {
         const name = url.pathname === '/account' ? 'account.html' : url.pathname.slice(1);
@@ -126,6 +132,35 @@ export function privateSurface({
       }
       if (!owner) {
         json(res, 401, { error: 'Sign in required' });
+        return;
+      }
+      if (req.method === 'GET' && url.pathname === '/account/api/conversation') {
+        json(
+          res,
+          200,
+          conversationContext(store.get(owner, 'world', 'connected') || { mode: 'connected' }, {
+            now: now(),
+            activity: store.list(owner, 'activity'),
+            decisions: store.list(owner, 'decision'),
+            actions: store.list(owner, 'action'),
+          }),
+        );
+        return;
+      }
+      if (req.method === 'GET' && url.pathname === '/account/api/export') {
+        json(res, 200, {
+          mode: 'connected',
+          exportedAt: new Date(now()).toISOString(),
+          records: Object.fromEntries(
+            ['world', 'event', 'memory', 'decision', 'action', 'notification', 'activity'].map(
+              (kind) => [kind, store.list(owner, kind)],
+            ),
+          ),
+          connections: enabledProviders.map((provider) => ({
+            provider,
+            status: store.connection(owner, provider)?.status || 'not-connected',
+          })),
+        });
         return;
       }
       if (req.method === 'POST' && url.pathname === '/account/api/commitment-rules') {

@@ -1,9 +1,25 @@
+import { openPrivacy, downloadJSON } from '/privacy.js';
+import { createConversation } from '/conversation.js';
 import { createIntelligenceCore } from '/intelligence-core.js';
 const core = createIntelligenceCore(document.querySelector('#intelligence-core'));
 window.addEventListener('pagehide', (e) => {
   if (!e.persisted) core.destroy();
 });
 const app = document.querySelector('#app');
+const conversation = createConversation({
+  host: document.querySelector('#intelligence-core'),
+  core,
+  context: () => api('conversation'),
+  scope: 'private',
+});
+document.querySelector('#privacy-launch').onclick = openPrivacy;
+document.querySelector('#export-private').onclick = async () => {
+  try {
+    downloadJSON(await api('export'), 'steward-private-export.json');
+  } catch {
+    openPrivacy();
+  }
+};
 const escape = (value) =>
   String(value ?? '').replace(
     /[&<>"']/g,
@@ -22,6 +38,7 @@ async function api(path, body) {
   return result;
 }
 function auth() {
+  conversation.reset();
   core.update({ state: 'observing' });
   load.stopped = true;
   load.lastState = undefined;
@@ -118,6 +135,7 @@ async function load() {
     load.stopped = true;
     load.generation = (load.generation || 0) + 1;
     try {
+      conversation.reset();
       await api('logout', {});
       app.innerHTML = '';
       auth();

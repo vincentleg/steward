@@ -2,13 +2,17 @@
 export function createIntelligenceCore(host) {
   if (!host) return { update() {}, destroy() {} };
   host.innerHTML =
-    '<canvas aria-hidden="true"></canvas><span class="core-caption">STEWARD IS WATCHING</span>';
+    '<canvas aria-hidden="true"></canvas><span class="core-caption">STEWARD IS WATCHING</span><span class="core-invitation" aria-hidden="true">Ask Steward ↗</span>';
   const canvas = host.querySelector('canvas'),
     ctx = canvas.getContext('2d'),
     caption = host.querySelector('span');
   const media = matchMedia('(prefers-reduced-motion: reduce)');
   const profiles = {
-    stable: [0.12, 0.25, 3],
+    stable: [0.2, 0.25, 3],
+    'conversation-idle': [0.24, 0.3, 4],
+    listening: [0.34, 0.4, 4],
+    understanding: [0.65, 0.55, 6],
+    responding: [0.4, 0.45, 4],
     observing: [0.2, 0.32, 3],
     signal: [0.6, 0.45, 4],
     deviation: [0.65, 0.55, 4],
@@ -25,6 +29,10 @@ export function createIntelligenceCore(host) {
   };
   const labels = {
     stable: 'STEWARD IS WATCHING',
+    'conversation-idle': 'STEWARD · PRESENT',
+    listening: 'LISTENING',
+    understanding: 'RETRIEVING EVIDENCE',
+    responding: 'SPEAKING',
     observing: 'OBSERVING · NO ACTION',
     signal: 'SIGNAL RECEIVED',
     deviation: 'DEVIATION DETECTED',
@@ -50,7 +58,11 @@ export function createIntelligenceCore(host) {
     visible = true,
     destroyed = false,
     pointer = { x: 0, y: 0 },
-    pulse = 0;
+    pulse = 0,
+    worldState = target,
+    conversationState = null,
+    voiceTarget = 0,
+    voiceEnvelope = 0;
   function size() {
     const r = host.getBoundingClientRect(),
       d = Math.min(devicePixelRatio || 1, 1.5);
@@ -66,9 +78,10 @@ export function createIntelligenceCore(host) {
   function draw() {
     if (!width || !height) return;
     const t = phase,
-      cx = width / 2 + pointer.x * 3,
-      cy = height / 2 + pointer.y * 3,
-      unit = Math.min(width, height) * 0.37;
+      cx = width / 2 + pointer.x * 6,
+      cy = height / 2 + pointer.y * 6,
+      unit =
+        Math.min(width, height) * 0.37 * (1 + 0.025 * Math.sin(t * 0.73) + voiceEnvelope * 0.035);
     ctx.clearRect(0, 0, width, height);
     // Continuous asymmetric contour sheets, not rotating circles or particles.
     for (let layer = 0; layer < 10; layer++) {
@@ -78,18 +91,19 @@ export function createIntelligenceCore(host) {
       for (let i = 0; i <= 160; i++) {
         const a = (i / 160) * Math.PI * 2;
         const wave =
-          Math.sin(a * 3 + t * 0.27 + layer * 0.34) * (0.085 + energy * 0.035) +
-          Math.cos(a * 5 - t * 0.19 + layer * 0.39) * 0.024 +
-          Math.sin(a * 2 + t * 0.11) * 0.045 +
+          Math.sin(a * 3 + t * 0.27 + layer * 0.34) *
+            (0.1 + energy * 0.06 + voiceEnvelope * 0.045) +
+          Math.cos(a * 5 - t * 0.19 + layer * 0.39) * (0.036 + energy * 0.018) +
+          Math.sin(a * 2 + t * 0.17 + layer * 0.12) * 0.065 +
           Math.sin(a * 7 + t * 0.4) * 0.012 * (target.uncertainty || 0);
         const r = radius * (1 + wave),
-          tilt = Math.sin(t * 0.13 + layer * 0.23) * 0.1;
+          tilt = Math.sin(t * 0.23 + layer * 0.23) * 0.14;
         const fold = Math.sin(a * 2 + layer * 0.18 + t * 0.13);
-        const x = cx + Math.cos(a) * r + fold * unit * 0.095;
+        const x = cx + Math.cos(a) * r + fold * unit * (0.11 + energy * 0.025);
         const y =
           cy +
           Math.sin(a) * r * (0.76 + tilt) +
-          Math.cos(a * 3 - t * 0.1 + layer * 0.13) * unit * 0.055;
+          Math.cos(a * 3 - t * 0.21 + layer * 0.13) * unit * 0.075;
         if (!i) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -143,7 +157,7 @@ export function createIntelligenceCore(host) {
     ctx.ellipse(
       cx,
       cy,
-      unit * (0.05 + 0.006 * Math.sin(t * 0.8)),
+      unit * (0.05 + 0.01 * Math.sin(t * 0.8) + voiceEnvelope * 0.012),
       unit * 0.035,
       0.3,
       0,
@@ -159,6 +173,7 @@ export function createIntelligenceCore(host) {
       const dt = Math.min((ms - last) / 1000, 0.05);
       last = ms;
       phase += dt;
+      voiceEnvelope += (voiceTarget - voiceEnvelope) * (voiceTarget > voiceEnvelope ? 0.16 : 0.065);
       const p = profiles[target.state] || profiles.stable;
       energy += (p[0] - energy) * 0.045;
       const focused = target.state === 'needs-you';
@@ -223,6 +238,9 @@ export function createIntelligenceCore(host) {
   schedule();
   return {
     update(next = { state: 'stable' }) {
+      worldState = next;
+      if (conversationState)
+        next = { ...next, state: conversationState, signalId: conversationState };
       const changed = next.state !== target.state || next.signalId !== target.signalId;
       if (changed) pulse = 1;
       target =
@@ -234,6 +252,13 @@ export function createIntelligenceCore(host) {
         richness = (profiles[next.state] || profiles.stable)[2];
         draw();
       }
+    },
+    conversation(state) {
+      conversationState = state;
+      this.update(worldState);
+    },
+    voiceEnergy(value) {
+      voiceTarget = media.matches ? 0 : Math.max(0, Math.min(1, Number(value) || 0));
     },
     destroy() {
       destroyed = true;

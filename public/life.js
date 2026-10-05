@@ -1,3 +1,5 @@
+import { openPrivacy, downloadJSON } from '/privacy.js';
+import { createConversation } from '/conversation.js';
 import { createIntelligenceCore } from '/intelligence-core.js';
 import { connections, categories } from '/connections.js';
 const core = createIntelligenceCore(document.querySelector('#intelligence-core'));
@@ -33,6 +35,13 @@ let world = null,
   query = '',
   locked = false,
   lastFocus;
+let demo = JSON.parse(sessionStorage.getItem('steward-product-demo') || 'null');
+const conversation = createConversation({
+  host: document.querySelector('#intelligence-core'),
+  core,
+  context: () => api('/conversation'),
+  focus: () => (selected ? 'resolution:' + selected : null),
+});
 const names = {
   'deviation.detected': 'Deviation detected',
   'impact.understood': 'Understanding impact',
@@ -90,8 +99,8 @@ function setWorld(w) {
   core.update(w.presence);
   id = w.id;
 }
-async function create() {
-  const r = await api('create', {});
+async function create(options = {}) {
+  const r = await api('create', options);
   setWorld(r.world);
   token = r.accessToken;
   sessionStorage.setItem('steward-life-id', id);
@@ -226,13 +235,14 @@ function connect() {
 let renderedView = null;
 function render() {
   if (!world) return;
-  document.body.dataset.productView = view;
+  document.body.dataset.productView = demo ? 'demo' : view;
   core.update(world.presence);
   document
     .querySelectorAll('nav button')
     .forEach((b) => b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false'));
-  content.innerHTML =
-    view === 'home'
+  content.innerHTML = demo
+    ? demoView()
+    : view === 'home'
       ? home()
       : view === 'try'
         ? library()
@@ -243,6 +253,7 @@ function render() {
     content.querySelectorAll('.reveal').forEach((el) => el.classList.remove('reveal'));
   renderedView = view;
   bind();
+  bindDemo();
 }
 function openDialog(kicker, html) {
   lastFocus = document.activeElement;
@@ -460,9 +471,207 @@ sheet.addEventListener('cancel', (event) => {
   closeDialog();
 });
 $('#trust').onclick = trust;
+$('#privacy-launch').onclick = openPrivacy;
+$('#export-world').onclick = () =>
+  task(async () => downloadJSON(await api('/export'), 'steward-synthetic-world.json'));
+$('#delete-world').onclick = () => {
+  openDialog(
+    'DELETE ACTIVE SYNTHETIC DATA',
+    '<h2 id="sheet-title">Delete this session?</h2><p>This removes this world from active server memory and clears its tab credentials. A fresh synthetic world replaces it. No private account is affected.</p><button class="primary" id="confirm-delete">Delete session</button><button class="secondary" data-dismiss>Keep my session</button>',
+  );
+  bindDialog();
+  $('#confirm-delete').onclick = () =>
+    task(async () => {
+      conversation.reset();
+      if (demo) await exitDemo();
+      await api('/delete', {});
+      id = null;
+      token = null;
+      world = null;
+      sessionStorage.removeItem('steward-life-id');
+      sessionStorage.removeItem('steward-life-token');
+      await create();
+      view = 'home';
+      closeDialog();
+    });
+};
+$('#demo-launch').onclick = () => task(startDemo);
 document
   .querySelectorAll('nav [data-view]')
   .forEach((b) => (b.onclick = () => navigate(b.dataset.view)));
+function saveDemo() {
+  if (demo) sessionStorage.setItem('steward-product-demo', JSON.stringify(demo));
+  else sessionStorage.removeItem('steward-product-demo');
+}
+async function startDemo() {
+  conversation.reset();
+  if (demo) return;
+  demo = {
+    normalId: id,
+    normalToken: token,
+    normalView: view,
+    normalSelected: selected,
+    elapsed: 0,
+    phase: 'intro',
+    paused: false,
+    stateElapsed: 0,
+  };
+  saveDemo();
+  try {
+    await create({ demo: true });
+    selected = null;
+    render();
+    window.scrollTo(0, 0);
+  } catch (e) {
+    const saved = demo;
+    demo = null;
+    id = saved.normalId;
+    token = saved.normalToken;
+    saveDemo();
+    throw e;
+  }
+}
+async function exitDemo() {
+  conversation.reset();
+  const saved = demo;
+  if (!saved) return;
+  await api('/delete', {});
+  demo = null;
+  id = saved.normalId;
+  token = saved.normalToken;
+  world = null;
+  view = saved.normalView;
+  selected = saved.normalSelected;
+  saveDemo();
+  sessionStorage.setItem('steward-life-id', id);
+  sessionStorage.setItem('steward-life-token', token);
+  try {
+    setWorld((await api()).world);
+  } catch {
+    await create();
+    view = 'home';
+    selected = null;
+  }
+  render();
+  window.scrollTo(0, 0);
+}
+function demoView() {
+  const r = world.resolutions.at(-1),
+    state = r?.state || 'stable',
+    finished = demo.phase === 'done';
+  const title = finished
+    ? 'Your world is stable.'
+    : !r
+      ? 'Your world is stable.'
+      : state === 'decision.pending'
+        ? 'One decision needs you.'
+        : state === 'outcome.restored'
+          ? 'The outcome is verified.'
+          : state === 'outcome.watching'
+            ? 'Requested is not received.'
+            : state === 'outcome.replanning'
+              ? 'Waiting now has a cost.'
+              : r.title;
+  const note = finished
+    ? 'Travel was one capability. The same intelligence protects time, money, work, people and opportunities.'
+    : !r
+      ? 'One intelligence. Quietly watching a synthetic world.'
+      : state === 'decision.pending'
+        ? 'Steward has evaluated the tradeoffs. You grant authority once.'
+        : r.monitor?.reason || 'The world is synthetic. The Steward engine is real.';
+  return `<section class="demo-experience" data-stage="${esc(state)}"><span class="eyebrow">PERMANENT DEMO · SYNTHETIC WORLD</span><div class="demo-controls" aria-label="Demo controls"><button id="demo-pause">${demo.paused ? 'Resume' : 'Pause'}</button><button id="demo-restart">Restart</button><button id="demo-exit">Exit demo</button></div><h1>${esc(title)}</h1><p class="demo-narrative">${esc(note)}</p><p class="live-state" role="status">${demo.paused ? 'Paused · engine held safely' : finished ? '0 DECISIONS NEED YOU' : names[state] || '0 DECISIONS NEED YOU'}</p>${r?.impact ? `<div class="demo-compression"><strong>${r.impact.affectedCount}<small>consequences</small></strong><span>→</span><strong>${r.futures.length}<small>futures</small></strong><span>→</span><strong>${r.compression.humanDecisions}<small>decisions now</small></strong></div>` : ''}${r && !r.verification ? `<div class="demo-evidence"><p><small>EXPECTED → OBSERVED</small><b>Flight tonight → cancellation</b><span>9 AM commitment → 8:30 AM · travel and preparation constraints recalculated</span></p>${r.worth ? `<p><small>WORTH TO YOU</small><b>${esc(r.worth.headline)}</b><span>${esc(r.selected?.title || '')}</span></p>` : ''}</div>` : ''}${state === 'decision.pending' ? `<div class="demo-decision"><h2>${esc(r.selected.title)}</h2><p>${esc(r.selected.evidence.slice(0, 2).join(' · '))}</p><button class="primary" id="demo-approve" ${demo.paused ? 'disabled' : ''}>Approve synthetic plan</button><p class="note">One approval. No real booking, message or money movement.</p><details><summary>Compare the other futures</summary>${r.options.map((o) => `<p>${esc(o.title)} · ${esc(o.evidence.join(' · '))}</p>`).join('')}</details></div>` : ''}${r?.offer ? `<p class="demo-offer"><b>$450 credit ≠ $412 cash</b><br>Credit worth to this world: $${r.offer.creditWorth}. ${r.offer.accepted === false ? 'Credit rejected. Cash protected.' : 'Evaluating restrictions and future flexibility.'}</p>` : ''}${r?.verification ? `<div class="demo-verification"><small>EXPECTED → OBSERVED → VERIFIED</small><h2>${r.verification.verified ? 'Every outcome condition confirmed.' : r.verification.overdue ? 'Confirmation missing. Reversible plan prepared.' : 'Refund acknowledged. Receipt still missing.'}</h2><p>${r.verification.verified ? `${esc(world.travel.arrival)} arrival · ${esc(world.commitments.find((c) => c.id === 'morning')?.status)} commitment · ${world.resources.miles.toLocaleString()} miles · ${money(world.money.refunds.reduce((sum, receipt) => sum + receipt.amount, 0))} refunded.` : 'No false success. No duplicate actions. 0 additional human decisions.'}</p></div>` : ''}${finished ? '<button class="primary" id="demo-explain">Ask Steward about the evidence →</button>' : ''}<p class="note">${finished ? 'Verified resolution.' : demo.phase === 'intro' ? 'A disruption is about to arrive.' : 'Steward continues automatically after your decision.'} Pause holds the synthetic engine; exit restores your original world.</p></section>`;
+}
+function bindDemo() {
+  if (!demo) return;
+  $('#demo-pause').onclick = () =>
+    task(async () => {
+      demo.paused = !demo.paused;
+      setWorld((await api('/demo', { paused: demo.paused })).world);
+      saveDemo();
+      render();
+    });
+  $('#demo-exit').onclick = () => task(exitDemo);
+  $('#demo-restart').onclick = () =>
+    task(async () => {
+      await exitDemo();
+      await startDemo();
+    });
+  if ($('#demo-approve'))
+    $('#demo-approve').onclick = () =>
+      task(async () => {
+        selected = world.resolutions.at(-1).id;
+        setWorld((await api('/approve', { id: selected, revision: world.revision })).world);
+        render();
+      });
+  if ($('#demo-explain')) $('#demo-explain').onclick = () => conversation.open();
+}
+let demoTickBusy = false;
+setInterval(async () => {
+  if (
+    !demo ||
+    demo.paused ||
+    locked ||
+    demoTickBusy ||
+    document.hidden ||
+    $('#steward-conversation')?.open
+  )
+    return;
+  demo.elapsed += 0.25;
+  demo.stateElapsed += 0.25;
+  const r = world?.resolutions.at(-1);
+  const observedState = r?.state || 'stable';
+  if (demo.lastState !== observedState) {
+    demo.lastState = observedState;
+    demo.stateElapsed = 0;
+  }
+  saveDemo();
+  demoTickBusy = true;
+  try {
+    if (demo.phase === 'intro' && demo.elapsed >= 4) {
+      demo.phase = 'running';
+      setWorld(
+        (
+          await api('/change', {
+            settings: { confirmationMode: 'delayed', meetingHour: 8.5, meetingPreparation: 30 },
+          })
+        ).world,
+      );
+      setWorld((await api('/start', { scenario: 'travel' })).world);
+      selected = world.resolutions.at(-1).id;
+      render();
+    } else if (r?.state === 'outcome.watching' && demo.stateElapsed >= 5) {
+      setWorld(
+        (
+          await api('/change', {
+            observation: { id: crypto.randomUUID(), kind: 'advance', minutes: 25 },
+          })
+        ).world,
+      );
+      render();
+    } else if (r?.state === 'outcome.replanning' && demo.stateElapsed >= 5) {
+      setWorld(
+        (
+          await api('/change', {
+            observation: { id: crypto.randomUUID(), kind: 'refund-confirmed' },
+          })
+        ).world,
+      );
+      render();
+    } else if (r?.state === 'outcome.restored' && demo.stateElapsed >= 8 && demo.phase !== 'done') {
+      demo.phase = 'done';
+      render();
+    }
+  } catch (e) {
+    notify('Demo paused safely. Restart or exit to continue.');
+    if (demo) {
+      demo.paused = true;
+      saveDemo();
+      render();
+    }
+  } finally {
+    demoTickBusy = false;
+  }
+}, 250);
 async function boot() {
   try {
     const r = await fetch('/world/api/scenarios');
@@ -476,6 +685,10 @@ async function boot() {
         else throw e;
       }
     } else await create();
+    if (demo && !world.demo) {
+      demo = null;
+      sessionStorage.removeItem('steward-product-demo');
+    }
     render();
   } catch {
     content.innerHTML =
@@ -485,13 +698,16 @@ async function boot() {
 }
 await boot();
 setInterval(async () => {
-  if (!id || !token) return;
+  if (!id || !token || locked) return;
+  const requestedId = id;
   try {
     const r = await api();
+    if (requestedId !== id || locked) return;
     const changed = !world || r.world.revision !== world.revision;
     setWorld(r.world);
     if (changed && !sheet.open && view !== 'connect' && !locked) render();
   } catch (e) {
+    if (requestedId !== id || locked) return;
     if (e.status === 404) {
       notify('Your synthetic session expired. Preparing a fresh world.');
       id = null;

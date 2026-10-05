@@ -67,7 +67,7 @@ try {
   }
   await p.screenshot({ path: '.data/living-proof/mobile.png' });
   await p.emulateMedia({ reducedMotion: 'reduce' });
-  await p.waitForTimeout(100);
+  await p.waitForTimeout(750); // allow the one-time mode-change redraw to settle
   const reduced = await frame();
   await p.waitForTimeout(700);
   assert.equal(await frame(), reduced);
