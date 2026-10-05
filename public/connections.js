@@ -60,6 +60,8 @@ const groups = {
     'Venmo',
     'Wise',
     'Revolut',
+    'Stripe receipts',
+    'Benefits',
     'Receipts',
     'Subscriptions',
     'Loyalty programs',
@@ -74,6 +76,9 @@ const groups = {
     'Warranties',
   ],
   Work: [
+    'Slack · work',
+    'Gmail · work',
+    'Outlook · work',
     'Microsoft Teams',
     'Google Drive',
     'OneDrive',
@@ -134,9 +139,11 @@ export const connections = Object.entries(groups).flatMap(([category, names]) =>
     status: 'COMING SOON',
     description: descriptions[category],
     see:
-      category === 'Health'
-        ? 'Only explicitly selected health context'
-        : 'Only the records you explicitly select',
+      category === 'Work'
+        ? 'Only explicitly selected work records; never personal accounts'
+        : category === 'Health'
+          ? 'Only explicitly selected health context'
+          : 'Only the records you explicitly select',
     understand: descriptions[category],
     prepare: 'Options, checklists, and proposed changes',
     act: 'Only with permission; sensitive or consequential actions require approval',

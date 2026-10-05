@@ -124,7 +124,7 @@ function home() {
   const count = active.filter((r) =>
     ['decision.pending', 'needs.information', 'verification.failed'].includes(r.state),
   ).length;
-  return `<section class="hero reveal"><span class="eyebrow">ONE INTELLIGENCE. YOUR WHOLE LIFE.</span><h1>${active.length ? 'Your world needs attention.' : 'Your world is stable.'}</h1><div class="decision-count"><b>${count}</b><span>${count === 1 ? 'DECISION NEEDS' : 'DECISIONS NEED'} YOU</span></div><p class="lede">Steward notices what changes, understands what it affects, and works until the outcome is restored.</p><div class="actions"><button class="primary" data-view="try">Try Steward →</button><button class="secondary" data-view="connect">Connect my life ↗</button><button class="secondary" data-change>Change the world</button></div><p class="note">A working synthetic world. No account, personal data, or connected services required.</p></section>${summary()}${controls()}<div class="section-head"><h2>Personal World State</h2><span class="eyebrow">WATCHING</span></div><div class="domains">${world.watching.map((d) => `<span class="domain">${d}</span>`).join('')}</div><p class="note">Shared goals, commitments, money, resources, and rules. Steward observes the changes you introduce here; it does not access your real accounts.</p><div class="section-head"><h2>Active resolutions & history</h2></div>${history()}`;
+  return `<section class="hero reveal"><span class="eyebrow">ONE INTELLIGENCE. YOUR WHOLE LIFE.</span><h1>${world.activeDeviations.length ? 'Your world needs attention.' : 'Your world is stable.'}</h1><div class="decision-count"><b>${count}</b><span>${count === 1 ? 'DECISION NEEDS' : 'DECISIONS NEED'} YOU</span></div><p class="lede">Steward notices what changes, understands what it affects, and works until the outcome is restored.</p><div class="actions"><button class="primary" data-view="try">Try Steward →</button><button class="secondary" data-view="connect">Connect my life ↗</button><button class="secondary" data-change>Change the world</button></div><p class="note">A working synthetic world. No account, personal data, or connected services required.</p></section>${summary()}${controls()}<div class="section-head"><h2>Personal World State</h2><span class="eyebrow">WATCHING</span></div><div class="domains">${world.watching.map((d) => `<span class="domain">${d}</span>`).join('')}</div><p class="note">Shared goals, commitments, money, resources, and rules. Steward observes the changes you introduce here; it does not access your real accounts.</p><div class="section-head"><h2>Active resolutions & history</h2></div>${history()}`;
 }
 function library() {
   return `<section class="reveal"><span class="eyebrow">THE WORLD IS SYNTHETIC. THE STATE CHANGES ARE REAL.</span><h1>Try Steward.</h1><p class="lede">Choose what changes. Steward uses the same world, value model, authority, and verification loop across every capability.</p>${controls()}<div class="grid">${scenarios
@@ -147,7 +147,7 @@ function resolution() {
   const selectedOption = r.selected;
   const completed = r.state === 'outcome.restored';
   const active = !completed && r.state !== 'stopped';
-  return `<section class="reveal"><button class="text-button" data-view="try">← All capabilities</button><span class="eyebrow">${esc(r.provider)} · SYNTHETIC COUNTERPARTY</span><h1>${esc(completed ? 'Outcome restored.' : r.title)}</h1><p class="lede">${esc(r.goal)}</p><div class="live-state" role="status">${esc(names[r.state] || r.state)}</div>${controls()}<div class="steps">${['Observe', 'Understand', 'Simulate', 'Authorize', 'Act', 'Verify'].map((s, i) => `<span class="${i === (completed ? 5 : ['decision.pending', 'observing', 'needs.information'].includes(r.state) ? 3 : r.actions.length ? 4 : r.impact ? 2 : 0) ? 'current' : ''}">${s}</span>`).join('')}</div><div class="resolution-layout"><div>${
+  return `<section class="reveal"><button class="text-button" data-view="try">← All capabilities</button><span class="eyebrow">${esc(r.provider)} · SYNTHETIC COUNTERPARTY</span><h1>${esc(completed ? 'Outcome restored.' : r.title)}</h1><p class="lede">${esc(r.goal)}</p><div class="live-state" role="status">${esc(names[r.state] || r.state)}</div>${controls()}<div class="steps">${['Observe', 'Understand', 'Simulate', 'Authorize', 'Act', 'Verify'].map((s, i) => `<span class="${i === (completed ? 5 : ['decision.pending', 'observing', 'needs.information'].includes(r.state) ? 3 : r.actions.length ? 4 : r.impact ? 2 : 0) ? 'current' : ''}">${s}</span>`).join('')}</div><div class="resolution-layout"><div class="resolution-main">${
     r.impact
       ? `<div class="section-head"><h2>Impact Graph</h2><span class="eyebrow">CONNECTED CONSEQUENCES</span></div><div class="impact-source">${esc(r.title)}</div><div class="impact-nodes">${r.impact.nodes.map((n) => `<div>${esc(n.label)}</div>`).join('')}</div><p class="note">Derived from dependencies in your World State. These commitments and resources constrain the possible futures.</p><div class="compression"><div><strong>${r.impact.affectedCount}</strong><small>Consequences</small></div><i>→</i><div><strong>${r.futures.length}</strong><small>Futures</small></div><i>→</i><div><strong>${r.compression.humanDecisions}</strong><small>Human decisions</small></div></div><span class="eyebrow">DECISION COMPRESSION · WORTH TO YOU</span><div class="section-head"><h2>Possible futures</h2></div><div class="options">${r.options
           .map((o) => {
@@ -156,7 +156,18 @@ function resolution() {
           })
           .join('')}</div>`
       : '<div class="loading-mark">↗</div><h2>Understanding what changed.</h2><p class="muted">Following the dependencies in your world.</p>'
-  }</div><aside class="resolution-side"><div class="decision"><span class="eyebrow">${completed ? 'VERIFIED OUTCOME' : r.state === 'observing' ? 'OBSERVE ONLY' : r.state === 'decision.pending' ? 'ONE DECISION NEEDS YOU' : 'STEWARD IS WORKING'}</span><h2>${esc(completed ? 'Back to calm.' : selectedOption?.title || 'Understanding the outcome.')}</h2>${completed ? `<ul class="evidence">${r.outcome.evidence.map((e) => `<li>${esc(e.label)}</li>`).join('')}</ul><p><b>${r.humanDecisions} human ${r.humanDecisions === 1 ? 'decision' : 'decisions'}. ${r.actions.length} verified actions.</b></p><button class="primary" data-view="try">Try another capability →</button>` : `<p>${esc(r.evidence?.[0] || 'Detect → understand → evaluate → act → verify.')}</p>${r.state === 'decision.pending' ? `<button class="primary" id="approve">Approve plan</button><p class="note">Authorizes only this plan in this synthetic world. No real transaction.</p>` : r.state === 'observing' ? '<p>No action will execute. Change autonomy to ask or act within your rules.</p>' : r.state === 'needs.information' ? '<p>No plan meets every constraint. Change the world to resolve the conflict.</p>' : '<p class="muted">No additional human interaction is needed while authorized actions run.</p>'}${active ? `<button class="text-button" data-stop="${r.id}">Stop this resolution</button>` : ''}`}</div>${r.offer ? `<div class="offer"><span class="eyebrow">COUNTERPARTY OFFER · WORTH TO YOU</span><div class="value">$450 credit<br>vs $412 cash</div><p>Credit’s expected value to you: ${money(r.offer.creditWorth)}.</p><p>Airline locked · expiration · ${Math.round(world.settings.airlineUseProbability * 100)}% expected use.</p><strong>${r.offer.accepted === undefined ? 'Evaluating…' : r.offer.accepted ? 'Credit accepted under your preference' : 'Offer rejected. Cash wins.'}</strong></div>` : ''}<div class="section-head"><h2>Live activity</h2></div><ul class="activity">${world.events
+  }</div><aside class="resolution-side"><div class="decision"><span class="eyebrow">${completed ? 'VERIFIED OUTCOME' : r.state === 'observing' ? 'OBSERVE ONLY' : r.state === 'decision.pending' ? 'ONE DECISION NEEDS YOU' : 'STEWARD IS WORKING'}</span><h2>${esc(completed ? 'Back to calm.' : selectedOption?.title || 'Understanding the outcome.')}</h2>${
+    completed
+      ? `<ul class="evidence">${r.outcome.evidence.map((e) => `<li>${esc(e.label)}</li>`).join('')}</ul><p><b>${r.humanDecisions} human ${r.humanDecisions === 1 ? 'decision' : 'decisions'}. ${r.actions.length} verified actions.</b></p><button class="primary" data-view="try">Try another capability →</button>`
+      : `${
+          r.evidence?.length
+            ? `<ul class="evidence">${r.evidence
+                .slice(0, 3)
+                .map((e) => `<li>${esc(e)}</li>`)
+                .join('')}</ul>`
+            : '<p>Detect → understand → evaluate → act → verify.</p>'
+        }${r.state === 'decision.pending' ? `<button class="primary" id="approve">Approve plan</button><p class="note">Authorizes only this plan in this synthetic world. No real transaction.</p>` : r.state === 'observing' ? '<p>No action will execute. Change autonomy to ask or act within your rules.</p>' : r.state === 'needs.information' ? '<p>No plan meets every constraint. Change the world to resolve the conflict.</p>' : '<p class="muted">No additional human interaction is needed while authorized actions run.</p>'}${active ? `<button class="text-button" data-stop="${r.id}">Stop this resolution</button>` : ''}`
+  }</div>${r.offer ? `<div class="offer"><span class="eyebrow">COUNTERPARTY OFFER · WORTH TO YOU</span><div class="value">$450 credit<br>vs $412 cash</div><p>Credit’s expected value to you: ${money(r.offer.creditWorth)}.</p><p>Airline locked · expiration · ${Math.round(world.settings.airlineUseProbability * 100)}% expected use.</p><strong>${r.offer.accepted === undefined ? 'Evaluating…' : r.offer.accepted ? 'Credit accepted under your preference' : 'Offer rejected. Cash wins.'}</strong></div>` : ''}<div class="section-head"><h2>Live activity</h2></div><ul class="activity">${world.events
     .filter((e) => e.resolutionId === r.id)
     .slice(-12)
     .reverse()
@@ -204,7 +215,17 @@ function openDialog(kicker, html) {
 function closeDialog() {
   sheet.close();
   render();
-  lastFocus?.focus();
+  const replacement = lastFocus?.dataset.connect
+    ? document.querySelector(`[data-connect="${CSS.escape(lastFocus.dataset.connect)}"]`)
+    : lastFocus?.hasAttribute('data-change')
+      ? document.querySelector('[data-change]')
+      : lastFocus?.id
+        ? document.getElementById(lastFocus.id)
+        : null;
+  (lastFocus?.isConnected
+    ? lastFocus
+    : replacement || document.querySelector('nav button[aria-current=page]')
+  )?.focus();
 }
 function trust() {
   openDialog(
@@ -375,8 +396,9 @@ function openReset() {
     });
 }
 $('#close-sheet').onclick = closeDialog;
-sheet.addEventListener('cancel', () => {
-  setTimeout(render, 0);
+sheet.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeDialog();
 });
 $('#trust').onclick = trust;
 document
