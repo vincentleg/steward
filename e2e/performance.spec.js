@@ -15,7 +15,7 @@ test('calm loads locally with bounded assets and no layout shift after fonts set
         if (!entry.hadRecentInput) window.stewardCLS += entry.value;
     }).observe({ type: 'layout-shift', buffered: true });
   });
-  await page.goto('http://localhost:3103/sandbox');
+  await page.goto('http://localhost:3103/sandbox/travel');
   await page.getByRole('button', { name: 'See Steward take over' }).waitFor();
   await page.evaluate(() => document.fonts.ready);
   const metrics = await page.evaluate(() => ({

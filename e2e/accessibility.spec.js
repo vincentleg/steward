@@ -1,6 +1,6 @@
 import { test, expect, devices } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-const url = 'http://localhost:3103/sandbox';
+const url = 'http://localhost:3103/sandbox/travel';
 async function audit(page) {
   await page.evaluate(async () => {
     await Promise.all(

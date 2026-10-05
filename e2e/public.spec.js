@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
-const url = 'http://localhost:3103/sandbox';
+const url = 'http://localhost:3103/sandbox/travel';
 test('anonymous desktop and phone sessions recover independently without email', async ({
   browser,
 }) => {

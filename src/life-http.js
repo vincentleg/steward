@@ -36,7 +36,7 @@ export function lifeService({
     sessions,
     async handle(req, res, url) {
       clean();
-      if (req.method === 'GET' && url.pathname === '/life') {
+      if (req.method === 'GET' && ['/sandbox', '/sandbox/', '/life'].includes(url.pathname)) {
         res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
         res.end(readFileSync('public/life.html'));
         return true;

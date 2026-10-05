@@ -23,7 +23,7 @@ const waitState = async (wanted) => {
   }
   throw Error('Timed out waiting for ' + wanted);
 };
-await p.goto(origin, { timeout: 120000 });
+await p.goto(origin + '/sandbox', { timeout: 120000 });
 await p.getByRole('heading', { name: 'Your world is stable.' }).waitFor();
 await p.getByRole('button', { name: 'Try Steward →', exact: true }).click();
 await p.locator('[data-scenario=travel]').click();
@@ -110,7 +110,7 @@ assert.equal((await state()).world.resources.cash, 5249);
 console.log('Reset, safe autonomous recovery, zero approval PASS');
 const other = await browser.newContext();
 const p2 = await other.newPage();
-await p2.goto(origin, { timeout: 120000 });
+await p2.goto(origin + '/sandbox', { timeout: 120000 });
 await p2.getByRole('heading', { name: 'Your world is stable.' }).waitFor();
 const isolated = await p2.evaluate(async () => {
   const id = sessionStorage.getItem('steward-life-id'),
