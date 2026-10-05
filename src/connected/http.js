@@ -1,3 +1,4 @@
+import { understandWorld } from '../core/world-understanding.js';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { CONSTITUTION } from '../core/constitution.js';
@@ -199,6 +200,7 @@ export function privateSurface({
           mode: 'connected',
           connections,
           world: store.get(owner, 'world', 'connected'),
+          understanding: understandWorld(store.get(owner, 'world', 'connected'), { now: now() }),
           decisions: store.list(owner, 'decision'),
           activity: store.list(owner, 'activity'),
           actions: store.list(owner, 'action'),

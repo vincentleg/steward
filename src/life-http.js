@@ -1,3 +1,4 @@
+import { understandWorld } from './core/world-understanding.js';
 import { readFileSync } from 'node:fs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { LifeEngine } from './core/life-engine.js';
@@ -14,6 +15,11 @@ export function lifeService({
   const rates = new Map();
   const json = (res, status, body) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    if (body.world)
+      body = {
+        ...body,
+        world: { ...body.world, understanding: understandWorld(body.world, { now: now() }) },
+      };
     res.end(JSON.stringify(body));
   };
   function clean() {
