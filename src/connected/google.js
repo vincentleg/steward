@@ -85,6 +85,16 @@ export class GoogleSensor {
   async read(owner, provider, path, params = {}) {
     let connection = this.store.connection(owner, provider);
     if (!connection) throw Error('Not connected');
+    if (
+      provider === 'calendar' &&
+      (!connection.scopes?.includes(GOOGLE_SCOPES.calendar) ||
+        connection.scopes.some(
+          (scope) =>
+            scope.startsWith('https://www.googleapis.com/auth/calendar') &&
+            scope !== GOOGLE_SCOPES.calendar,
+        ))
+    )
+      throw Error('Read-only Calendar permission required');
     if (connection.expiresAt <= this.now() + 60000) {
       const result = await this.tokenRequest({
         grant_type: 'refresh_token',
@@ -114,6 +124,7 @@ export class GoogleSensor {
     const url = new URL(path, base);
     url.search = new URLSearchParams(params).toString();
     const response = await this.fetchImpl(url, {
+      method: 'GET',
       headers: { Authorization: `Bearer ${connection.accessToken}` },
       signal: AbortSignal.timeout(10000),
     });

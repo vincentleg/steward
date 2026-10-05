@@ -4,7 +4,14 @@ import { CONSTITUTION } from '../core/constitution.js';
 import { randomUUID } from 'node:crypto';
 import { AccountInputError } from './store.js';
 
-export function privateSurface({ store, google = null, observer = null, origin, now = Date.now }) {
+export function privateSurface({
+  store,
+  google = null,
+  observer = null,
+  origin,
+  now = Date.now,
+  enabledProviders = ['calendar', 'gmail'],
+}) {
   const base = new URL(origin);
   const secure = base.protocol === 'https:';
   if (!secure && !['localhost', '127.0.0.1'].includes(base.hostname)) throw Error('HTTPS required');
@@ -180,6 +187,7 @@ export function privateSurface({ store, google = null, observer = null, origin, 
           const c = store.connection(owner, provider);
           return {
             provider,
+            enabled: enabledProviders.includes(provider),
             status: c?.status || 'not-connected',
             scopes: c?.scopes || [],
             lastSyncAt: c?.lastSyncAt || null,
@@ -242,6 +250,10 @@ export function privateSurface({ store, google = null, observer = null, origin, 
       ) {
         const value = await body(req);
         fields(value, ['provider']);
+        if (!enabledProviders.includes(value.provider)) {
+          json(res, 403, { error: 'This provider is disabled during the read-only Calendar test' });
+          return;
+        }
         if (!['calendar', 'gmail'].includes(value.provider)) throw Error('Invalid provider');
         if (!google) {
           json(res, 503, { error: 'Google private testing is not configured' });

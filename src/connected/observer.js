@@ -31,21 +31,23 @@ export class ConnectedObserver {
     if (!connection) throw Error('Not connected');
     const items = [];
     let pageToken;
-    let syncToken = connection.syncToken;
+    const timeMin = new Date(this.now() - 24 * 3600000).toISOString();
+    const timeMax = new Date(this.now() + 60 * 24 * 3600000).toISOString();
+    const baseline = connection.calendarWindowVersion === 1;
     for (let page = 0; page < 10; page++) {
       let result;
       try {
         result = await this.google.read(owner, 'calendar', 'calendars/primary/events', {
           maxResults: '100',
-          ...(syncToken ? { syncToken } : {}),
+          timeMin,
+          timeMax,
+          singleEvents: 'true',
+          showDeleted: 'true',
+          orderBy: 'startTime',
+          fields: 'items(id,status,summary,start,end,location,updated),nextPageToken,timeZone',
           ...(pageToken ? { pageToken } : {}),
         });
       } catch (error) {
-        if (error.status === 410 && syncToken) {
-          syncToken = null;
-          pageToken = null;
-          continue;
-        }
         throw error;
       }
       items.push(...(result.items || []));
@@ -62,16 +64,35 @@ export class ConnectedObserver {
           constraints: [],
           memory: [],
         };
-        if (!syncToken)
-          world.commitments = world.commitments.filter((existing) =>
-            items.some((item) => item.id === existing.id),
-          );
+        const previous = world.commitments;
+        const relevant = (item) =>
+          Date.parse(item.end?.dateTime || item.end?.date) > Date.parse(timeMin) &&
+          Date.parse(item.start?.dateTime || item.start?.date) < Date.parse(timeMax);
+        // Rolling bounded snapshots intentionally avoid syncToken: Google disallows combining it
+        // with timeMin/timeMax. Missing entries are not asserted to be cancelled without evidence.
+        world.commitments = [];
+        world.calendarWindow = { timeMin, timeMax, mode: 'read-only', pollIntervalSeconds: 120 };
+        world.calendarAnalysis = {
+          changedEvents: 0,
+          consequences: 0,
+          humanDecisions: 0,
+          externalActions: 0,
+          evaluatedAt: new Date(this.now()).toISOString(),
+        };
+        const changes = [];
         for (const item of items) {
+          const old = previous.find((x) => x.id === item.id);
           const projected = {
             id: item.id,
             title: clean(item.summary),
-            start: item.start?.dateTime || item.start?.date,
-            end: item.end?.dateTime || item.end?.date,
+            start:
+              item.start?.dateTime ||
+              item.start?.date ||
+              (item.status === 'cancelled' ? old?.start : undefined),
+            end:
+              item.end?.dateTime ||
+              item.end?.date ||
+              (item.status === 'cancelled' ? old?.end : undefined),
             timeZone: item.start?.timeZone || null,
             status: item.status,
             location: clean(item.location),
@@ -80,8 +101,12 @@ export class ConnectedObserver {
             confidence: 1,
             importance: 'unknown',
           };
-          const old = world.commitments.find((x) => x.id === item.id);
-          if (old && digest(old) !== digest(projected))
+          if (
+            !relevant(item) &&
+            !(item.status === 'cancelled' && old && Date.parse(old.end) > Date.parse(timeMin))
+          )
+            continue;
+          if (baseline && old && digest(old) !== digest(projected)) {
             this.event(
               owner,
               'calendar',
@@ -89,11 +114,30 @@ export class ConnectedObserver {
               item.status === 'cancelled' ? 'commitment.cancelled' : 'commitment.changed',
               projected,
             );
-          if (!old && connection.lastSyncAt)
+            changes.push(projected);
+          }
+          if (baseline && !old && item.status !== 'cancelled') {
             this.event(owner, 'calendar', item.id, 'commitment.created', projected);
-          world.commitments = world.commitments.filter((x) => x.id !== item.id);
-          if (item.status !== 'cancelled') world.commitments.push(projected);
+            changes.push(projected);
+          }
+          if (item.status !== 'cancelled' && relevant(item)) world.commitments.push(projected);
         }
+        if (baseline)
+          for (const old of previous)
+            if (
+              Date.parse(old.end) > this.now() &&
+              Date.parse(old.start) < Date.parse(timeMax) &&
+              !items.some((item) => item.id === old.id)
+            ) {
+              this.event(owner, 'calendar', old.id, 'commitment.no_longer_in_window', {
+                id: old.id,
+                source: 'google-calendar',
+                confidence: 0.7,
+                evidence:
+                  'Previously upcoming commitment no longer appears in the bounded primary-calendar snapshot',
+              });
+              changes.push({ id: old.id });
+            }
         if (world.commitments.length > 1000) throw Error('Calendar exceeds private testing limit');
         const conflicts = [];
         const timed = world.commitments.filter(
@@ -108,6 +152,52 @@ export class ConnectedObserver {
               conflicts.push([timed[i].id, timed[j].id]);
           }
         world.conflicts = conflicts;
+        world.calendarAnalysis.changedEvents = changes.length;
+        world.calendarAnalysis.consequences = conflicts.length;
+        world.calendarAnalysis.humanDecisions = conflicts.length ? 1 : 0;
+        world.calendarAnalysis.conclusion = conflicts.length
+          ? 'Overlapping commitments require your priority judgment. No external action taken.'
+          : 'No overlapping commitments detected. No decision or external action needed.';
+        world.calendarAssessments = world.calendarAssessments || [];
+        for (const change of changes) {
+          const contextId = world.context.id,
+            sourceId = `observed:${digest(change.id)}`;
+          const affected = [
+            ...new Set([change.id, ...conflicts.filter((ids) => ids.includes(change.id)).flat()]),
+          ];
+          const nodes = [
+            { id: sourceId, contextId },
+            ...affected.map((id) => ({
+              id: `commitment:${digest(id)}`,
+              contextId,
+              domain: 'time',
+              providerEventId: id,
+            })),
+          ];
+          const impacts = impactGraph({
+            contextId,
+            sourceId,
+            nodes,
+            edges: nodes.slice(1).map((node) => ({ from: sourceId, to: node.id })),
+          });
+          world.calendarAssessments.push({
+            providerEventId: change.id,
+            observedAt: world.calendarAnalysis.evaluatedAt,
+            impacts,
+            consequenceCount: impacts.nodes.length,
+            humanDecisions: affected.length > 1 ? 1 : 0,
+            mode: 'observe-only',
+            externalActions: 0,
+          });
+          const id = `assessment:${change.id}:${digest(world.calendarAnalysis)}`;
+          this.store.put(owner, 'activity', id, {
+            type: 'calendar.consequences_evaluated',
+            at: world.calendarAnalysis.evaluatedAt,
+            decisionRequired: Boolean(conflicts.length),
+            externalActions: 0,
+          });
+        }
+        world.calendarAssessments = world.calendarAssessments.slice(-30);
         this.store.put(owner, 'world', 'connected', world);
         for (const ids of conflicts) {
           const id = digest(ids.sort());
@@ -190,7 +280,8 @@ export class ConnectedObserver {
             this.store.put(owner, 'decision', decision.id, { ...decision, status: 'resolved' });
         this.store.connect(owner, 'calendar', {
           ...current,
-          syncToken: result.nextSyncToken,
+          syncToken: null,
+          calendarWindowVersion: 1,
           lastSyncAt: new Date(this.now()).toISOString(),
           status: 'connected',
         });

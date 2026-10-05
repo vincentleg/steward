@@ -27,7 +27,13 @@ const google =
 const observer = google ? new ConnectedObserver({ store, google }) : null;
 const { server } = createSandbox({
   publicBaseUrl: origin,
-  privateSurface: privateSurface({ store, google, observer, origin }),
+  privateSurface: privateSurface({
+    store,
+    google,
+    observer,
+    origin,
+    enabledProviders: ['calendar'],
+  }),
 });
 server.requestTimeout = 15000;
 server.headersTimeout = 10000;
@@ -38,7 +44,7 @@ const timer = setInterval(async () => {
   if (!observer) return;
   const users = store.db.prepare('SELECT DISTINCT owner FROM connections').all();
   for (const { owner } of users)
-    for (const provider of ['calendar', 'gmail'])
+    for (const provider of ['calendar'])
       if (store.connection(owner, provider)) {
         try {
           await observer.sync(owner, provider);

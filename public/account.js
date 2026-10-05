@@ -17,6 +17,8 @@ async function api(path, body) {
   return result;
 }
 function auth() {
+  load.stopped = true;
+  load.lastState = undefined;
   app.innerHTML = `<section><span class="badge">PRIVATE DEVELOPMENT · ACCOUNTS</span><h2>Your private Steward</h2><p class="note">Your account owns its connections, world and decisions. The public synthetic sandbox has no access.</p><form><label>Account name<input name="login" autocomplete="username" minlength="3" maxlength="64" required></label><p class="note">A name or email address works. Used only as your private login name; no email is sent or verified.</p><label>Password · at least 14 characters<input name="password" type="password" autocomplete="current-password" minlength="14" maxlength="128" required></label><button type="submit">Sign in</button><button type="button" data-signup class="secondary">Create account</button><p role="status"></p></form><p class="note">Development accounts only. No password recovery or production account availability yet.</p></section>`;
   const form = app.querySelector('form');
   async function submit(kind) {
@@ -44,20 +46,27 @@ function auth() {
   app.querySelector('[data-signup]').onclick = () => submit('signup');
 }
 async function load() {
+  const generation = (load.generation = (load.generation || 0) + 1);
   let state;
   try {
     state = await api('me');
   } catch {
+    if (generation !== load.generation) return;
     auth();
     return;
   }
+  if (generation !== load.generation) return;
+  load.stopped = false;
+  const signature = JSON.stringify(state);
+  if (signature === load.lastState && app.querySelector('[data-logout]')) return;
+  load.lastState = signature;
   const connections = state.connections
     .map(
       (c) =>
-        `<section><span class="badge">${escape(c.status.toUpperCase())}</span><h2>${c.provider === 'calendar' ? 'Google Calendar' : 'Gmail'}</h2><p class="note">${c.provider === 'calendar' ? 'Read event times and locations; detect changes and overlapping commitments. No Calendar writes.' : 'Inspect up to 20 relevant recent messages using subject metadata. No bodies stored; no email sends.'}</p><p class="note">Last sync: ${escape(c.lastSyncAt || 'Not yet synced')}<br>Granted scopes: ${escape(c.scopes.join(', ') || 'None')}</p>${c.status === 'not-connected' ? `<button data-connect="${c.provider}" ${state.googleConfigured ? '' : 'disabled'}>Review permissions</button>` : `<button data-sync="${c.provider}">Sync now</button><button class="secondary" data-disconnect="${c.provider}">Disconnect</button>`}</section>`,
+        `<section><span class="badge">${escape(c.status.toUpperCase())}</span><h2>${c.provider === 'calendar' ? 'Google Calendar' : 'Gmail'}</h2><p class="note">${c.provider === 'calendar' ? 'Read event times and locations; detect changes and overlapping commitments. No Calendar writes.' : 'Inspect up to 20 relevant recent messages using subject metadata. No bodies stored; no email sends.'}</p><p class="note">Last sync: ${escape(c.lastSyncAt || 'Not yet synced')}<br>Granted scopes: ${escape(c.scopes.join(', ') || 'None')}</p>${c.status === 'not-connected' ? `<button data-connect="${c.provider}" ${state.googleConfigured && c.enabled !== false ? '' : 'disabled'}>Review permissions</button>` : `<button data-sync="${c.provider}">Sync now</button><button class="secondary" data-disconnect="${c.provider}">Disconnect</button>`}</section>`,
     )
     .join('');
-  app.innerHTML = `<p class="badge">PRIVATE SPACE · READ FIRST</p><h2>${state.decisions.filter((d) => d.status === 'needs-you').length} decisions need you</h2>${!state.googleConfigured ? '<section><h3>Google private testing awaits configuration</h3><p class="note">No real accounts are connected. Application credentials and a reviewed HTTPS callback are required.</p></section>' : ''}${connections}<section><h3>Decision inbox</h3>${state.decisions.length ? state.decisions.map((d) => `<p><strong>${escape(d.type)}</strong> · ${escape(d.status)}<br><span class="note">${escape(d.evidence)}. ${escape(d.action)}</span></p>`).join('') : '<p class="note">No decisions yet.</p>'}</section><section><h3>Your connected world</h3>${(state.world?.commitments || []).map((c) => `<p>${escape(c.title)}<br><span class="note">${escape(c.start)} · Google Calendar · importance unknown</span></p>`).join('') || '<p class="note">No personal world data loaded.</p>'}</section><section><h3>Activity</h3>${state.activity.map((a) => `<p>${escape(a.type)}<br><span class="note">${escape(a.at)}</span></p>`).join('') || '<p class="note">No provider activity yet.</p>'}</section><section><h3>Maximum intelligence.<br>Minimum necessary authority.</h3><p class="note">Read-first sensors. No external writes. External messages cannot change your permissions or the Steward Constitution. Polling runs every two minutes only while the private server is running.</p><button class="secondary" data-delete>Delete connected data</button><button class="secondary" data-logout>Sign out</button><p role="status"></p></section>`;
+  app.innerHTML = `<p class="badge">PRIVATE SPACE · READ FIRST</p><h2>${state.decisions.filter((d) => d.status === 'needs-you').length} decisions need you</h2>${!state.googleConfigured ? '<section><h3>Google private testing awaits configuration</h3><p class="note">No real accounts are connected. Application credentials and a reviewed HTTPS callback are required.</p></section>' : ''}${connections}<section><h3>Decision inbox</h3>${state.decisions.length ? state.decisions.map((d) => `<p><strong>${escape(d.type)}</strong> · ${escape(d.status)}<br><span class="note">${escape(d.evidence)}. ${escape(d.action)}</span></p>`).join('') : '<p class="note">No decisions yet.</p>'}</section><section><h3>Your connected world</h3><p class="note">Read-only · previous 24 hours through next 60 days. Automatically observed every two minutes.</p>${state.world?.calendarAnalysis ? `<p class="note">${escape(state.world.calendarAnalysis.conclusion)} External actions: 0.</p>` : ''}${(state.world?.commitments || []).map((c) => `<p>${escape(c.title)}<br><span class="note">${escape(c.start)} · Google Calendar · importance unknown</span></p>`).join('') || '<p class="note">No personal world data loaded.</p>'}</section><section><h3>Activity</h3>${state.activity.map((a) => `<p>${escape(a.type)}<br><span class="note">${escape(a.at)}</span></p>`).join('') || '<p class="note">No provider activity yet.</p>'}</section><section><h3>Maximum intelligence.<br>Minimum necessary authority.</h3><p class="note">Read-first sensors. No external writes. External messages cannot change your permissions or the Steward Constitution. Polling runs every two minutes only while the private server is running.</p><button class="secondary" data-delete>Delete connected data</button><button class="secondary" data-logout>Sign out</button><p role="status"></p></section>`;
   const status = app.querySelector('[role=status]');
   const run = async (fn) => {
     try {
@@ -82,6 +91,8 @@ async function load() {
     );
   app.querySelector('[data-delete]').onclick = () => run(() => api('delete-data', {}));
   app.querySelector('[data-logout]').onclick = async () => {
+    load.stopped = true;
+    load.generation = (load.generation || 0) + 1;
     try {
       await api('logout', {});
       app.innerHTML = '';
@@ -121,3 +132,13 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') load();
 });
 load();
+// Refresh private view only; this never calls the provider synchronization endpoint.
+setInterval(() => {
+  if (
+    !load.stopped &&
+    !document.hidden &&
+    app.querySelector('[data-logout]') &&
+    !document.querySelector('dialog')
+  )
+    load();
+}, 3000);

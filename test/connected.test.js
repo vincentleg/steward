@@ -226,6 +226,107 @@ test('calendar adapter fixtures detect changes and conflicts, deduplicate, and n
   await assert.rejects(observer.sync(a, 'calendar'));
   store.close();
 });
+test('operational Calendar window excludes history, detects fresh changes and cancellations, and only analyzes internally', async () => {
+  const { store, a } = fixture();
+  store.connect(a, 'calendar', { id: 'fixture' });
+  const now = () => Date.parse('2026-10-05T12:00:00Z');
+  let items = [
+    {
+      id: 'historical',
+      summary: 'Old',
+      start: { dateTime: '2016-01-01T12:00:00Z' },
+      end: { dateTime: '2016-01-01T13:00:00Z' },
+    },
+    {
+      id: 'upcoming',
+      summary: 'Upcoming',
+      start: { dateTime: '2026-10-06T12:00:00Z' },
+      end: { dateTime: '2026-10-06T12:10:00Z' },
+      status: 'confirmed',
+    },
+  ];
+  const calls = [];
+  const google = {
+    read: async (owner, provider, path, params) => {
+      calls.push({ provider, path, params });
+      return { items };
+    },
+  };
+  const observer = new ConnectedObserver({ store, google, now });
+  await observer.sync(a, 'calendar');
+  assert.deepEqual(
+    store.get(a, 'world', 'connected').commitments.map((x) => x.id),
+    ['upcoming'],
+  );
+  assert.equal(store.list(a, 'event').length, 0);
+  assert.equal(calls[0].params.singleEvents, 'true');
+  assert.ok(calls[0].params.timeMin);
+  assert.ok(calls[0].params.timeMax);
+  assert.equal(calls[0].params.syncToken, undefined);
+  assert.equal(calls[0].params.fields.includes('attendees'), false);
+  items = [
+    ...items,
+    {
+      id: 'new-event',
+      summary: 'Test',
+      start: { dateTime: '2026-10-06T15:00:00Z' },
+      end: { dateTime: '2026-10-06T15:10:00Z' },
+      status: 'confirmed',
+    },
+  ];
+  await observer.sync(a, 'calendar');
+  const world = store.get(a, 'world', 'connected');
+  assert.equal(world.calendarAnalysis.changedEvents, 1);
+  assert.equal(world.calendarAnalysis.humanDecisions, 0);
+  assert.equal(world.calendarAssessments.at(-1).consequenceCount, 1);
+  assert.equal(world.calendarAnalysis.externalActions, 0);
+  assert.equal(store.list(a, 'action').length, 0);
+  assert.equal(store.list(a, 'decision').length, 0);
+  await observer.sync(a, 'calendar');
+  assert.equal(store.list(a, 'event').length, 1);
+  items = items.map((item) =>
+    item.id === 'new-event' ? { id: 'new-event', status: 'cancelled' } : item,
+  );
+  await observer.sync(a, 'calendar');
+  assert.equal(
+    store.get(a, 'world', 'connected').commitments.some((x) => x.id === 'new-event'),
+    false,
+  );
+  assert.equal(store.list(a, 'event').at(-1).type, 'commitment.cancelled');
+  store.close();
+});
+test('Calendar sensor rejects write-scoped credentials and uses only primary-calendar GET', async () => {
+  const { store, a } = fixture();
+  let calls = 0;
+  const google = new GoogleSensor({
+    store,
+    clientId: 'fixture',
+    clientSecret: 'fixture',
+    origin: 'http://localhost:3406',
+    fetchImpl: async (url, options) => {
+      calls++;
+      assert.equal(options.method, 'GET');
+      assert.equal(new URL(url).pathname, '/calendar/v3/calendars/primary/events');
+      return { ok: true, json: async () => ({ items: [] }) };
+    },
+  });
+  store.connect(a, 'calendar', {
+    id: 'fixture',
+    scopes: ['https://www.googleapis.com/auth/calendar.events'],
+    expiresAt: Date.now() + 3600000,
+  });
+  await assert.rejects(google.read(a, 'calendar', 'calendars/primary/events'));
+  assert.equal(calls, 0);
+  store.connect(a, 'calendar', {
+    id: 'fixture',
+    scopes: [GOOGLE_SCOPES.calendar],
+    expiresAt: Date.now() + 3600000,
+    accessToken: 'fixture',
+  });
+  await google.read(a, 'calendar', 'calendars/primary/events');
+  assert.equal(calls, 1);
+  store.close();
+});
 test('mail fixture injection remains data; no authority mutation or full body persistence', async () => {
   const { store, a, b } = fixture();
   store.connect(a, 'gmail', { id: 'connection-A' });
