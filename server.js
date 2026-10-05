@@ -184,7 +184,7 @@ const server = http.createServer(async (req, res) => {
       });
       return res.end(readFileSync(path));
     }
-    const files = { '/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css' };
+    const files = { '/': 'index.html', '/presentation': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css' };
     const file = files[url.pathname];
     if (!file) return json(res, 404, { error: 'Not found' });
     res.writeHead(200, {
@@ -196,7 +196,8 @@ const server = http.createServer(async (req, res) => {
       'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',
     });
-    res.end(readFileSync(`public/${file}`));
+    const content = readFileSync(`public/${file}`);
+    res.end(url.pathname === '/presentation' ? content.toString().replace('<body>', '<body data-mode="presentation">') : content);
   } catch {
     json(res, 500, { error: 'Request could not be processed' });
   }

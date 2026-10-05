@@ -1,4 +1,5 @@
 const publicMode = document.body.dataset.mode === 'public';
+const presentationMode = document.body.dataset.mode === 'presentation';
 let demo = { active: false };
 if (publicMode) {
   try {
@@ -6,8 +7,8 @@ if (publicMode) {
     demo.lastTick = Date.now();
   } catch {}
 }
-const storage = publicMode ? sessionStorage : localStorage;
-const runKey = publicMode ? 'steward-public-run' : 'steward-run';
+const storage = publicMode || presentationMode ? sessionStorage : localStorage;
+const runKey = publicMode ? 'steward-public-run' : presentationMode ? 'steward-presentation-run' : 'steward-run';
 const api = publicMode ? '/sandbox/api/sessions' : '/api/runs';
 function apiFetch(url, options = {}) {
   return fetch(url, {
@@ -107,7 +108,7 @@ function options() {
 function decision() {
   const delivery = run.delivery;
   const emailed = delivery?.channel === 'email';
-  return `<section class="scene decision-scene"><div class="decision-intro">${title('ONE DECISION NEEDS YOU', 'Keep your plans.<br><em>We’ll do the rest.</em>', 'One outcome to protect.<br>Every consequence accounted for.')}<div class="decision-summary"><div><strong>6</strong><span>CONSEQUENCES</span></div><b>→</b><div><strong>3</strong><span>FUTURES</span></div><b>→</b><div><strong class="accent">1</strong><span>DECISION</span></div></div><div class="approval-channel"><span class="phone-icon">▯</span><div><strong>${run.mode === 'replay' ? 'Replay approval arriving…' : publicMode ? 'The judgment is yours.' : emailed ? 'APPROVAL SENT TO YOUR PHONE' : delivery?.error ? 'Email unavailable. Local approval ready.' : 'Ready for your approval.'}</strong><p>${run.mode === 'replay' ? 'Automatic simulated approval · stage safety mode' : publicMode ? 'Approve here. No email or account needed.' : emailed ? 'WAITING FOR APPROVAL…' : 'Open the secure approval page to continue.'}</p></div></div></div><article class="decision-card"><div class="recommendation-label"><span>✳</span> STEWARD RECOMMENDS</div><h2>Get home<br>tonight.</h2><p class="flight-detail">Alternative flight <span>·</span> 9:40 PM <span>↗</span></p><div class="decision-price"><span>+$92</span><div>NET INCREMENTAL<br><small>$504 fare − $412 refund</small></div></div><ul class="benefits"><li>9 AM commitment preserved</li><li>31,000 miles preserved</li><li>$412 refund rights protected</li></ul>${run.mode === 'replay' ? '<button class="primary" disabled>Awaiting replay approval <span>◷</span></button>' : publicMode ? `<button class="primary" id="approve-public">Approve Steward’s plan <span>↗</span></button>` : `<a class="text-button" href="${escape(run.approvalUrl || '#')}" target="_blank" rel="noopener" aria-label="Approve Steward’s plan">Having trouble? Approve here instead <span>↗</span></a>`}<div class="card-footnote">One approval. Everything else is on us.<br>Sandbox actions. No real purchases.</div></article></section>`;
+  return `<section class="scene decision-scene"><div class="decision-intro">${title('ONE DECISION NEEDS YOU', 'Keep your plans.<br><em>We’ll do the rest.</em>', 'One outcome to protect.<br>Every consequence accounted for.')}<div class="decision-summary"><div><strong>6</strong><span>CONSEQUENCES</span></div><b>→</b><div><strong>3</strong><span>FUTURES</span></div><b>→</b><div><strong class="accent">1</strong><span>DECISION</span></div></div><div class="approval-channel"><span class="phone-icon">▯</span><div><strong>${run.mode === 'replay' ? 'Replay approval arriving…' : publicMode ? 'The judgment is yours.' : emailed ? 'APPROVAL SENT TO YOUR PHONE ✓' : delivery?.error ? 'Email unavailable. Local approval ready.' : 'Ready for your approval.'}</strong><p>${run.mode === 'replay' ? 'Automatic simulated approval · stage safety mode' : publicMode ? 'Approve here. No email or account needed.' : emailed ? 'WAITING FOR APPROVAL…' : 'Open the secure approval page to continue.'}</p></div></div></div><article class="decision-card"><div class="recommendation-label"><span>✳</span> STEWARD RECOMMENDS</div><h2>Get home<br>tonight.</h2><p class="flight-detail">Alternative flight <span>·</span> 9:40 PM <span>↗</span></p><div class="decision-price"><span>+$92</span><div>NET INCREMENTAL<br><small>$504 fare − $412 refund</small></div></div><ul class="benefits"><li>9 AM commitment preserved</li><li>31,000 miles preserved</li><li>$412 refund rights protected</li></ul>${run.mode === 'replay' ? '<button class="primary" disabled>Awaiting replay approval <span>◷</span></button>' : publicMode ? `<button class="primary" id="approve-public">Approve Steward’s plan <span>↗</span></button>` : `<a class="text-button" href="${escape(run.approvalUrl || '#')}" target="_blank" rel="noopener" aria-label="Approve Steward’s plan">Having trouble? Approve here instead <span>↗</span></a>`}<div class="card-footnote">One approval. Everything else is on us.<br>Sandbox actions. No real purchases.</div></article></section>`;
 }
 const lanes = [
   [
@@ -323,6 +324,17 @@ async function start(mode) {
     pending = false;
   }
 }
+async function restartPresentation() {
+  if (pending) return;
+  if (run && run.state !== 'RESOLVED' && !run.stopped) {
+    try {
+      const response = await apiFetch(`${api}/${run.id}/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      if (!response.ok) { toast('Could not safely stop the previous run. Try again.'); return; }
+    } catch { toast('Could not safely stop the previous run. Try again.'); return; }
+  }
+  reset();
+  await start('live');
+}
 function reset() {
   demo = { active: false };
   saveDemo();
@@ -390,7 +402,7 @@ async function poll() {
   }
 }
 document.querySelector('#replay').addEventListener('click', () => start('replay'));
-document.querySelector('#reset').addEventListener('click', reset);
+document.querySelector('#reset').addEventListener('click', presentationMode ? restartPresentation : reset);
 let drawerTrigger;
 function toggleDrawer(id, force) {
   const panel = document.querySelector('#' + id);
@@ -437,6 +449,10 @@ document.addEventListener('keydown', (e) => {
   }
   if (!panel && !publicMode && e.key.toLowerCase() === 'r' && e.shiftKey) start('replay');
 });
+if (presentationMode) {
+  document.querySelector('.header-center').textContent = 'PRIVATE PRESENTATION · EMAIL APPROVAL';
+  document.querySelector('#reset').textContent = 'Restart demo';
+}
 if (publicMode) {
   document.querySelector('#replay').hidden = true;
   document.querySelector('.avatar').textContent = 'S';
