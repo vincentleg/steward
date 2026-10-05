@@ -133,3 +133,24 @@ test('operational facts have provenance and expiry; actions do not create stable
   assert.equal(r.state, 'action.failed');
   assert.equal(w.resources.cash, 5000);
 });
+test('stopping is not outcome restoration; action failure remains safe and reset clears pending deviations', async () => {
+  const e = new LifeEngine({ pace: 0 }),
+    w = e.create();
+  const r = await e.start(w, 'travel');
+  e.stop(w, r.id);
+  assert.equal(r.state, 'stopped');
+  assert.equal(w.activeDeviations.length, 1);
+  assert.equal(w.outcomeHistory.length, 0);
+  e.reset(w);
+  const other = await e.start(w, 'home');
+  e.apply = () => {
+    throw Error('Provider unavailable');
+  };
+  await e.approve(w, other.id, w.revision);
+  assert.equal(other.state, 'action.failed');
+  assert.equal(other.outcome, undefined);
+  assert.equal(w.home.backup, null);
+  e.stop(w, other.id);
+  e.reset(w);
+  assert.equal(w.activeDeviations.length, 0);
+});

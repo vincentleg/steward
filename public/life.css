@@ -477,7 +477,8 @@ h3 {
   font-weight: 600;
 }
 .option.blocked {
-  opacity: 0.65;
+  background: #edeeee;
+  border-style: dashed;
 }
 .decision {
   border: 1px solid var(--line);
@@ -988,5 +989,34 @@ footer a {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 850px) {
+  .resolution-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .resolution-side {
+    display: contents;
+  }
+  .resolution-layout > .resolution-main {
+    order: 2;
+  }
+  .resolution-layout .decision {
+    order: 1;
+  }
+  .resolution-layout .offer {
+    order: 3;
+  }
+  .resolution-side > .section-head {
+    order: 4;
+  }
+  .resolution-side > .activity {
+    order: 5;
+  }
+  .resolution-side > .note {
+    order: 6;
   }
 }

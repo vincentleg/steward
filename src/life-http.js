@@ -170,6 +170,7 @@ export function lifeService({
           'This event is already resolved. Reset the world to try it again.',
           'The world changed. Review the updated plan.',
           'No feasible plan',
+          'Reset this world before starting more resolutions.',
           'Stop the partially executed resolution before changing its plan.',
           'No approval is available',
           'An authorized action is running. Stop it before changing its mandate.',

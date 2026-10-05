@@ -14,7 +14,10 @@
     "format:check": "prettier --check server.js sandbox-server.js src public test e2e scripts playwright.config.js",
     "record:demo": "node scripts/record-demo.js",
     "sandbox": "node --env-file-if-exists=.env sandbox-server.js",
-    "phone:gateway": "node --env-file-if-exists=.env scripts/phone-gateway.js"
+    "phone:gateway": "node --env-file-if-exists=.env scripts/phone-gateway.js",
+    "test:v2": "node scripts/v2-e2e.js",
+    "test:v2:mobile": "node scripts/v2-mobile.js",
+    "scan:public": "node scripts/public-secret-scan.js"
   },
   "engines": {
     "node": ">=22"

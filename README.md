@@ -6,7 +6,7 @@ When your flight is cancelled, the airline emails you a problem. It should email
 
 **A personal outcome recovery system. Agents execute tasks. Steward restores outcomes.**
 
-Steward models what matters, detects deviations, compares possible futures, compresses the consequences into one decision, acts within a human mandate, negotiates, and verifies the intended outcome. Travel recovery is today’s deeply functional capability; other domains are labeled concept previews.
+Steward models what matters, detects deviations, compares possible futures, compresses the consequences into one decision, acts within a human mandate, negotiates, and verifies the intended outcome. The public V2 product runs ten functional synthetic capabilities through one shared engine. Real service connections remain coming-soon permission previews.
 
 ![Steward decision card](docs/decision.png)
 
@@ -16,7 +16,21 @@ Steward models what matters, detects deviations, compares possible futures, comp
 
 **https://steward-public.onrender.com** — no account, email or connected services. Synthetic world, real server-side workflow, browser approval and verified recovery. Private LIVE mode is not exposed. The Free service may take about a minute to wake after inactivity; anonymous sessions reset on server restart. [Deployment and verification](docs/DEPLOYMENT.md).
 
-## Run
+## Public V2: one shared world
+
+Open the public URL and choose **Try Steward**, **Change the world**, or **Connect my life**.
+
+- Ten synthetic capabilities: travel, SF Tech Week, money, purchases, benefits, work, home, administration, people, and opportunities.
+- One session holds cash, miles, commitments, preferences, rules, events, actions, and operational memory. Actions mutate that world; reload restores it.
+- Change meeting importance, spending limits, miles preference, delivery urgency, or calendar priorities. Recommendations genuinely change. Unrecognized text is rejected without modifying state.
+- Observe only, ask before acting, and act within rules are enforced server-side. Consequential actions require approval; permitted reversible recovery can require zero decisions.
+- **Connect my life** previews future services, compartmentalized permissions, and coming-soon sheets. No OAuth, credential collection, interest form, or implied partnership.
+
+The public world is in memory, isolated by a random bearer credential, expires after 30 minutes, and is lost on server restart. It uses seeded facts and a bounded deterministic parser, not a general LLM or real personal-account access. [V2 boundaries and verification](docs/PUBLIC-V2.md).
+
+Local public V2: `npm run sandbox`, then open **http://localhost:3003/**. The private presentation app remains separate.
+
+## Original private presentation / replay
 
 Node 22 or newer.
 
@@ -59,7 +73,7 @@ Email outages are visible in the event log and fall back to a local approval lin
 
 No real airline purchase, calendar OAuth or bank transaction occurs. The agent autonomously calls allowlisted sandbox tools after approval. UI state derives from backend events rather than animation timers.
 
-## Economics
+## Original golden-path economics
 
 Seven seeded flights are checked for availability and arrival before the meeting, with a 90-minute arrival buffer. Exactly three recovery choices remain:
 
@@ -69,7 +83,7 @@ Seven seeded flights are checked for availability and arrival before the meeting
 
 The seeded credit-use probability is 35%. A $450 airline-locked voucher has an estimated expected-use value of $158, versus $412 flexible cash. The probability is a synthetic user preference, not a prediction from an external service. Refund eligibility assumes the original flight was cancelled and Vincent declines that carrier's rebooking and voucher. [DOT refund policy](https://www.transportation.gov/individuals/aviation-consumer-protection/refunds) supports this seeded case. Refunds in the demo occur instantly; real processing times differ.
 
-## General core, one real capability
+## General core and capabilities
 
 ```mermaid
 flowchart LR

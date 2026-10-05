@@ -23,6 +23,11 @@ const ALLOWED = [
   'prepare',
   'submit_form',
 ];
+const clock = (hour) => {
+  const h = Math.floor(hour),
+    minutes = Math.round((hour - h) * 60);
+  return `${h % 12 || 12}${minutes ? ':' + String(minutes).padStart(2, '0') : ''} ${h >= 12 ? 'PM' : 'AM'}`;
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export function seedLife(id = randomUUID()) {
   const identity = principal({ id: `person:${id}`, name: 'Alex · synthetic' });
@@ -193,7 +198,7 @@ export class LifeEngine {
       contextId: w.context.id,
       label:
         id === 'morning'
-          ? `${w.commitments.find((c) => c.id === 'morning').hour} AM commitment`
+          ? `${clock(w.commitments.find((c) => c.id === 'morning').hour)} commitment`
           : {
               cash: 'Flexible cash',
               miles: `${w.resources.miles.toLocaleString()} miles`,
@@ -273,6 +278,8 @@ export class LifeEngine {
   }
   async start(w, scenario) {
     if (!SCENARIOS.some((s) => s.id === scenario)) throw Error('Unknown scenario');
+    if (w.resolutions.length >= 30)
+      throw Error('Reset this world before starting more resolutions.');
     if (w.resolutions.some((r) => !['outcome.restored', 'stopped'].includes(r.state)))
       throw Error('Finish or stop the active resolution first');
     if (w.resolutions.some((r) => r.scenario === scenario && r.state === 'outcome.restored'))
@@ -787,7 +794,7 @@ export class LifeEngine {
     if (!r) throw Error('Resolution not found');
     if (r.state === 'outcome.restored' || r.state === 'stopped') return;
     this.emit(w, r, 'stopped', 'No further actions will execute');
-    w.activeDeviations = w.activeDeviations.filter((d) => d.id !== r.deviation?.id);
+    if (r.deviation) r.deviation.status = 'paused'; // Stopping work does not restore reality.
     w.activeResolutions = w.activeResolutions.filter((a) => a.id !== r.id);
   }
   reset(w) {

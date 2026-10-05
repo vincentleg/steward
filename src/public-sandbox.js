@@ -71,7 +71,7 @@ export function createSandbox({
         return res.end();
       }
       if (req.method === 'GET' && url.pathname === '/healthz')
-        return json(res, 200, { ok: true, mode: 'public-sandbox' });
+        return json(res, 200, { ok: true, mode: 'public-sandbox', productVersion: 2 });
       if (req.method === 'GET' && ['/sandbox', '/sandbox/'].includes(url.pathname)) {
         let html = readFileSync('public/index.html', 'utf8')
           .replace('<body>', '<body data-mode="public">')
