@@ -34,7 +34,7 @@ export function createIntelligenceCore(host) {
     'needs-you': 'CLARITY · YOUR DECISION',
     acting: 'ACTING WITHIN AUTHORITY',
     verifying: 'VERIFYING THE OUTCOME',
-    resolved: 'OUTCOME RESTORED · WATCHING',
+    resolved: 'OUTCOME RESTORED',
     watching: 'AWAITING EVIDENCE',
     contradicted: 'EVIDENCE CONFLICTS',
     replanning: 'OUTCOME STILL OPEN',
