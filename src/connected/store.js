@@ -11,6 +11,26 @@ import {
 import { chmodSync } from 'node:fs';
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
+export class AccountInputError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+function accountName(value) {
+  if (typeof value !== 'string')
+    throw new AccountInputError(
+      'ACCOUNT_NAME_INVALID',
+      'Use a name or email address, 3–64 characters.',
+    );
+  const name = value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+  if (name.length < 3 || name.length > 64 || !/^[\p{L}\p{N}][\p{L}\p{N} ._@+'-]*$/u.test(name))
+    throw new AccountInputError(
+      'ACCOUNT_NAME_INVALID',
+      'Use a name or email address, 3–64 characters; letters, numbers, spaces and . _ @ + - are allowed.',
+    );
+  return name;
+}
 const kinds = new Set([
   'world',
   'event',
@@ -53,24 +73,31 @@ export class PrivateStore {
     );
   }
   createUser(login, password) {
-    if (
-      !/^[a-zA-Z0-9_.-]{3,64}$/.test(login) ||
-      typeof password !== 'string' ||
-      password.length < 14 ||
-      password.length > 128
-    )
-      throw Error('Invalid account input');
+    const name = accountName(login);
+    if (typeof password !== 'string' || password.length < 14 || password.length > 128)
+      throw new AccountInputError('PASSWORD_INVALID', 'Use a password of 14–128 characters.');
+    if (this.db.prepare('SELECT id FROM users WHERE login=?').get(name))
+      throw new AccountInputError(
+        'ACCOUNT_EXISTS',
+        'Account could not be created. Try signing in or choose another name.',
+      );
     const id = randomUUID(),
       salt = randomBytes(16).toString('hex');
     this.db
       .prepare('INSERT INTO users VALUES(?,?,?,?)')
-      .run(id, login.toLowerCase(), salt, scryptSync(password, salt, 32).toString('hex'));
+      .run(id, name, salt, scryptSync(password, salt, 32).toString('hex'));
     return id;
   }
   login(login, password) {
     if (typeof login !== 'string' || typeof password !== 'string' || password.length > 128)
       return null;
-    const user = this.db.prepare('SELECT * FROM users WHERE login=?').get(login.toLowerCase());
+    let name;
+    try {
+      name = accountName(login);
+    } catch {
+      return null;
+    }
+    const user = this.db.prepare('SELECT * FROM users WHERE login=?').get(name);
     const candidate = scryptSync(password, user?.salt || 'dummy-authentication-salt', 32);
     if (!user || !timingSafeEqual(candidate, Buffer.from(user.password, 'hex'))) return null;
     const token = randomBytes(32).toString('base64url');

@@ -17,16 +17,24 @@ async function api(path, body) {
   return result;
 }
 function auth() {
-  app.innerHTML = `<section><span class="badge">PRIVATE DEVELOPMENT · ACCOUNTS</span><h2>Your private Steward</h2><p class="note">Your account owns its connections, world and decisions. The public synthetic sandbox has no access.</p><form><label>Account name<input name="login" autocomplete="username" minlength="3" maxlength="64" required></label><label>Password · at least 14 characters<input name="password" type="password" autocomplete="current-password" minlength="14" maxlength="128" required></label><button type="submit">Sign in</button><button type="button" data-signup class="secondary">Create account</button><p role="status"></p></form><p class="note">Development accounts only. No password recovery or production account availability yet.</p></section>`;
+  app.innerHTML = `<section><span class="badge">PRIVATE DEVELOPMENT · ACCOUNTS</span><h2>Your private Steward</h2><p class="note">Your account owns its connections, world and decisions. The public synthetic sandbox has no access.</p><form><label>Account name<input name="login" autocomplete="username" minlength="3" maxlength="64" required></label><p class="note">A name or email address works. Used only as your private login name; no email is sent or verified.</p><label>Password · at least 14 characters<input name="password" type="password" autocomplete="current-password" minlength="14" maxlength="128" required></label><button type="submit">Sign in</button><button type="button" data-signup class="secondary">Create account</button><p role="status"></p></form><p class="note">Development accounts only. No password recovery or production account availability yet.</p></section>`;
   const form = app.querySelector('form');
   async function submit(kind) {
     const status = form.querySelector('[role=status]');
+    if (!form.reportValidity()) return;
+    const buttons = [...form.querySelectorAll('button')];
+    buttons.forEach((button) => (button.disabled = true));
     try {
-      await api(kind, { login: form.login.value, password: form.password.value });
-      form.password.value = '';
+      await api(kind, {
+        login: form.elements.namedItem('login').value,
+        password: form.elements.namedItem('password').value,
+      });
+      form.elements.namedItem('password').value = '';
       await load();
     } catch (error) {
       status.textContent = error.message;
+    } finally {
+      buttons.forEach((button) => (button.disabled = false));
     }
   }
   form.onsubmit = (e) => {

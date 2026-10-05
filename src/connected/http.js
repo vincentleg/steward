@@ -2,6 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { CONSTITUTION } from '../core/constitution.js';
 import { randomUUID } from 'node:crypto';
+import { AccountInputError } from './store.js';
 
 export function privateSurface({ store, google = null, observer = null, origin, now = Date.now }) {
   const base = new URL(origin);
@@ -260,8 +261,14 @@ export function privateSurface({ store, google = null, observer = null, origin, 
         return;
       }
       json(res, 404, { error: 'Not found' });
-    } catch {
-      json(res, 400, { error: 'Request could not be completed' });
+    } catch (error) {
+      if (error instanceof AccountInputError) {
+        // Fixed code only: no submitted identifier, password, provider payload or stack trace.
+        console.warn(`Private account request rejected: ${error.code}`);
+        json(res, 400, { error: error.message, code: error.code });
+      } else {
+        json(res, 400, { error: 'Request could not be completed' });
+      }
     }
   };
 }

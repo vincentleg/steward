@@ -91,6 +91,29 @@ test('distinct accounts, owner scoped records, encrypted credentials, logout and
   assert.equal(store.owner(tb), null);
   store.close();
 });
+test('account names support ordinary names and email-style identifiers, with consistent normalization and safe validation', () => {
+  const { store } = fixture();
+  for (const name of ['Synthetic Full Name', 'synthetic@example.test', 'Élodie Test']) {
+    const owner = store.createUser(name, 'long-synthetic-password');
+    assert.equal(
+      store.owner(store.login(`  ${name.toUpperCase()}  `, 'long-synthetic-password')),
+      owner,
+    );
+  }
+  assert.throws(
+    () => store.createUser('bad<script>', 'long-synthetic-password'),
+    (error) => error.code === 'ACCOUNT_NAME_INVALID',
+  );
+  assert.throws(
+    () => store.createUser('valid-name', 'short'),
+    (error) => error.code === 'PASSWORD_INVALID',
+  );
+  assert.throws(
+    () => store.createUser('Synthetic Full Name', 'long-synthetic-password'),
+    (error) => error.code === 'ACCOUNT_EXISTS',
+  );
+  store.close();
+});
 test('OAuth PKCE, invalid state, wrong-session callback and tokens never returned to client', async () => {
   const { store, a, b, ta, tb } = fixture();
   let calls = 0;
