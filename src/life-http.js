@@ -68,7 +68,7 @@ export function lifeService({
           session = match && sessions.get(match[1]);
           if (
             !session ||
-            token.length !== session.token.length ||
+            Buffer.byteLength(token) !== Buffer.byteLength(session.token) ||
             !timingSafeEqual(Buffer.from(token), Buffer.from(session.token))
           ) {
             json(res, 404, { error: 'World not found or expired' });
@@ -170,6 +170,7 @@ export function lifeService({
           'This event is already resolved. Reset the world to try it again.',
           'The world changed. Review the updated plan.',
           'No feasible plan',
+          'Stop the partially executed resolution before changing its plan.',
           'No approval is available',
           'An authorized action is running. Stop it before changing its mandate.',
           'Stop the active resolution and wait for its action to settle before resetting',

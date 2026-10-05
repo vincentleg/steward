@@ -191,7 +191,18 @@ export class LifeEngine {
     const nodes = [...ids].map((id) => ({
       id,
       contextId: w.context.id,
-      label: id.replaceAll('-', ' '),
+      label:
+        id === 'morning'
+          ? `${w.commitments.find((c) => c.id === 'morning').hour} AM commitment`
+          : {
+              cash: 'Flexible cash',
+              miles: `${w.resources.miles.toLocaleString()} miles`,
+              sarah: 'Sarah',
+              'refund-rights': 'Refund rights',
+              'strategic-goal': 'Founder goals',
+            }[id] ||
+            w.commitments.find((c) => c.id === id)?.label ||
+            id.replaceAll('-', ' '),
     }));
     r.impact = impactGraph({
       contextId: w.context.id,
@@ -204,6 +215,18 @@ export class LifeEngine {
     const { options } = capabilityPlan(r.scenario, w, {
       affectedIds: [source, ...r.impact.nodes.map((n) => n.id)],
     });
+    if (r.scenario === 'travel')
+      for (const option of options) {
+        option.constraints = [
+          ...(option.constraints || []),
+          { id: 'lodging', passed: w.travel.hotel !== 'cancelled' },
+        ];
+        option.operations = option.operations.filter(
+          (op) =>
+            !['update_commitment', 'send_message'].includes(op.type) ||
+            r.impact.nodes.some((n) => n.id === op.id),
+        );
+      }
     r.futures = simulateFutures(
       w,
       options.map((o) => ({
@@ -258,6 +281,7 @@ export class LifeEngine {
     const r = {
       id: randomUUID(),
       scenario,
+      contextId: w.context.id,
       title: c.title,
       goal: c.goal,
       provider: c.provider,
@@ -330,6 +354,7 @@ export class LifeEngine {
   }
   policy(w, r, op) {
     if (
+      r.contextId !== w.context.id ||
       !ALLOWED.includes(op.type) ||
       op.realMoney ||
       op.expandsAuthority ||
@@ -459,6 +484,13 @@ export class LifeEngine {
       w.money.refunds.push({ id, amount: op.amount, provider: r.provider });
       w.resources.cash += op.amount;
     }
+    appendMemory(w, {
+      id: `counterparty:${id}`,
+      contextId: w.context.id,
+      kind: 'counterparty-history',
+      value: { provider: r.provider, refund: op.amount, method: 'cash' },
+      source: { type: 'sandbox-provider', id: r.id },
+    });
     this.emit(w, r, 'refund.confirmed', `$${op.amount} cash refund confirmed`);
   }
   apply(w, r, op, id) {
@@ -524,7 +556,9 @@ export class LifeEngine {
       case 'travel':
         return (
           w.travel.status === 'rebooked' &&
-          (w.commitments.find((c) => c.id === 'morning').importance < 0.5 ||
+          w.travel.hotel !== 'cancelled' &&
+          (!r.impact.nodes.some((n) => n.id === 'morning') ||
+            w.commitments.find((c) => c.id === 'morning').importance < 0.5 ||
             w.commitments.find((c) => c.id === 'morning').status === 'protected') &&
           (r.selected.id === 'A' ||
             r.offer?.accepted === true ||
@@ -625,6 +659,8 @@ export class LifeEngine {
     const active = w.resolutions.find((r) => !['outcome.restored', 'stopped'].includes(r.state));
     if (active && this.busy.has(active.id))
       throw Error('An authorized action is running. Stop it before changing its mandate.');
+    if (active?.actions.length)
+      throw Error('Stop the partially executed resolution before changing its plan.');
     const changes = {};
     if (typeof input.text === 'string') {
       const t = input.text.toLowerCase().trim();
@@ -650,6 +686,7 @@ export class LifeEngine {
         changes.deliveryUrgent = false;
       if (/rather.*dinner|personal.*priority/.test(t)) changes.calendarPriority = 'personal';
       if (/hotel.*cancel/.test(t)) changes.hotel = 'cancelled';
+      else if (/hotel.*confirmed/.test(t)) changes.hotel = 'confirmed';
       if (!Object.keys(changes).length)
         return {
           recognized: false,
@@ -691,23 +728,31 @@ export class LifeEngine {
       } else if (['preserveMiles', 'deliveryUrgent'].includes(key)) {
         if (typeof value !== 'boolean') throw Error('Invalid preference');
       } else if (key === 'hotel') {
-        if (value !== 'cancelled') throw Error('Invalid hotel observation');
+        if (!['cancelled', 'confirmed'].includes(value)) throw Error('Invalid hotel observation');
       } else throw Error('This field cannot be changed');
     }
     for (const [key, value] of Object.entries(changes)) {
       if (key === 'meetingImportance')
         w.commitments.find((c) => c.id === 'morning').importance = value;
       else if (key === 'meetingHour') w.commitments.find((c) => c.id === 'morning').hour = value;
-      else if (key === 'hotel') w.travel.hotel = value;
-      else w.settings[key] = value;
+      else if (key === 'hotel') {
+        w.travel.hotel = value;
+        if (!w.dependencies.some(([a, b]) => a === 'flight' && b === 'hotel'))
+          w.dependencies.push(['flight', 'hotel'], ['hotel', 'cash']);
+      } else w.settings[key] = value;
     }
+    const temporary = Object.keys(changes).some((k) =>
+      ['meetingHour', 'meetingImportance', 'deliveryUrgent'].includes(k),
+    );
+    const fact = Object.keys(changes).every((k) => k === 'hotel');
     appendMemory(w, {
       id: `change:${randomUUID()}`,
       contextId: w.context.id,
-      kind: 'explicit-rule',
+      kind: fact ? 'historical-observation' : temporary ? 'current-constraint' : 'explicit-rule',
       value: changes,
       source: { type: 'human', id: `visitor:${w.id}` },
       explicit: true,
+      ...(temporary ? { expiresAt: new Date(this.now() + 30 * 60 * 1000).toISOString() } : {}),
     });
     this.emit(w, null, 'world.changed', 'Explicit synthetic constraints updated', { changes });
     if (active) {
@@ -724,7 +769,7 @@ export class LifeEngine {
         void this.execute(w, active);
       }
     }
-    if (changes.hotel)
+    if (changes.hotel === 'cancelled')
       this.emit(
         w,
         null,

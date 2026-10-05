@@ -100,3 +100,36 @@ test('dependency graph changes downstream evaluation rather than merely its pict
   );
   assert.equal(r.recommended, 'A');
 });
+test('new lodging uncertainty propagates and prevents a false all-clear', async () => {
+  const e = new LifeEngine({ pace: 0 }),
+    w = e.create();
+  const r = await e.start(w, 'travel');
+  e.change(w, { text: 'My hotel was cancelled too.' });
+  assert.equal(w.travel.hotel, 'cancelled');
+  assert.equal(
+    r.impact.nodes.some((n) => n.id === 'hotel'),
+    true,
+  );
+  assert.equal(r.recommended, null);
+  assert.equal(r.state, 'needs.information');
+  await assert.rejects(e.approve(w, r.id, w.revision));
+  e.change(w, { text: 'My hotel is confirmed.' });
+  assert.equal(r.recommended, 'B');
+  await e.approve(w, r.id, w.revision);
+  assert.equal(r.outcome.verified, true);
+});
+test('operational facts have provenance and expiry; actions do not create stable preferences', async () => {
+  const e = new LifeEngine({ pace: 0 }),
+    w = e.create();
+  e.change(w, { text: 'My meeting moved to 8 AM.' });
+  assert.equal(w.memory.at(-1).kind, 'current-constraint');
+  assert.ok(w.memory.at(-1).expiresAt);
+  e.change(w, { settings: { preserveMiles: true } });
+  assert.equal(w.memory.at(-1).kind, 'explicit-rule');
+  assert.equal(w.memory.filter((m) => m.kind === 'stable-preference').length, 0);
+  const r = await e.start(w, 'travel');
+  r.contextId = 'foreign-context';
+  await e.approve(w, r.id, w.revision);
+  assert.equal(r.state, 'action.failed');
+  assert.equal(w.resources.cash, 5000);
+});
