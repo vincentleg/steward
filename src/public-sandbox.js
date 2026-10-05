@@ -67,12 +67,12 @@ export function createSandbox({
       );
       if (await life.handle(req, res, url)) return;
       if (req.method === 'GET' && url.pathname === '/') {
-        res.writeHead(302, { Location: '/life', 'Cache-Control': 'no-store' });
+        res.writeHead(302, { Location: '/sandbox', 'Cache-Control': 'no-store' });
         return res.end();
       }
       if (req.method === 'GET' && url.pathname === '/healthz')
         return json(res, 200, { ok: true, mode: 'public-sandbox', productVersion: 2 });
-      if (req.method === 'GET' && ['/sandbox', '/sandbox/'].includes(url.pathname)) {
+      if (req.method === 'GET' && ['/sandbox/travel', '/sandbox/travel/'].includes(url.pathname)) {
         let html = readFileSync('public/index.html', 'utf8')
           .replace('<body>', '<body data-mode="public">')
           .replace('src="/app.js"', 'src="/sandbox/app.js"')

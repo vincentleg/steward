@@ -38,7 +38,7 @@ const axe = async (name) => {
     name,
   );
 };
-await page.goto(origin, { timeout: 120000 });
+await page.goto(origin + '/sandbox', { timeout: 120000 });
 await page.getByRole('heading', { name: 'Your world is stable.' }).waitFor();
 await axe('home');
 await page.locator('nav [data-view=try]').click();
