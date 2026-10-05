@@ -2,7 +2,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 const secrets = [];
 try {
   for (const line of readFileSync('.env', 'utf8').split('\n')) {
-    const m = line.match(/^(AGENTMAIL_API_KEY|APPROVAL_EMAIL|APPROVAL_SECRET)=(.*)$/);
+    const m = line.match(
+      /^(AGENTMAIL_API_KEY|APPROVAL_EMAIL|APPROVAL_SECRET|GOOGLE_CLIENT_SECRET|CONNECTION_ENCRYPTION_KEY)=(.*)$/,
+    );
     if (m) {
       const v = m[2].trim().replace(/^['"]|['"]$/g, '');
       if (v.length > 8) secrets.push(v);
