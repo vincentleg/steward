@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f5f4f0" />
+    <meta
+      name="description"
+      content="One intelligence for your life. Explore a working synthetic world: change constraints, compare futures, and let Steward restore outcomes."
+    />
+    <title>Steward — Your life is handled.</title>
+    <link rel="stylesheet" href="/life.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a href="/life" class="brand" aria-label="Steward home">STEWARD<span>●</span></a>
+        <p class="definition">Sense · Think · Evaluate · Watch · Act · Resolve · Defend</p>
+        <span class="world-label">SYNTHETIC WORLD</span>
+      </header>
+      <nav aria-label="Main navigation">
+        <button data-view="home">Your world</button><button data-view="try">Try Steward</button
+        ><button data-view="connect">Connect my life <span>↗</span></button>
+      </nav>
+      <main id="content">
+        <section class="loading">
+          <div class="loading-mark">S</div>
+          <h1>Preparing your world.</h1>
+          <p>One intelligence. A world of possibilities.</p>
+          <p class="muted">No account. No personal data. No connected services.</p>
+        </section>
+      </main>
+      <footer>
+        <span>YOUR LIFE. YOUR PERMISSIONS.</span><button id="trust">Constitution & privacy</button
+        ><a href="/sandbox">Original travel demo ↗</a><span>Session expires after 30 minutes.</span>
+      </footer>
+    </div>
+    <dialog id="sheet" aria-labelledby="sheet-title">
+      <div class="sheet-head">
+        <span class="eyebrow" id="sheet-kicker"></span
+        ><button id="close-sheet" aria-label="Close dialog">×</button>
+      </div>
+      <div id="sheet-content"></div>
+    </dialog>
+    <div id="toast" role="status" hidden></div>
+    <script type="module" src="/life.js"></script>
+  </body>
+</html>

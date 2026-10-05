@@ -1,3 +1,4 @@
+import { lifeService } from './life-http.js';
 import http from 'node:http';
 import { CONSTITUTION } from './core/constitution.js';
 import { readFileSync, existsSync } from 'node:fs';
@@ -18,6 +19,13 @@ export function createSandbox({
 } = {}) {
   const store = new EventStore(null, {
     seed: (mode) => ({ capability: travelCapability.id, ...travelCapability.seed(mode) }),
+  });
+  const life = lifeService({
+    publicBaseUrl,
+    pace: pace === 0 ? 0 : 350,
+    now,
+    ttl: ttlMs,
+    maxSessions,
   });
   const credentials = new Map();
   const limits = new Map();
@@ -57,8 +65,9 @@ export function createSandbox({
         'Content-Security-Policy',
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; form-action 'self'",
       );
+      if (await life.handle(req, res, url)) return;
       if (req.method === 'GET' && url.pathname === '/') {
-        res.writeHead(302, { Location: '/sandbox', 'Cache-Control': 'no-store' });
+        res.writeHead(302, { Location: '/life', 'Cache-Control': 'no-store' });
         return res.end();
       }
       if (req.method === 'GET' && url.pathname === '/healthz')
@@ -173,5 +182,5 @@ export function createSandbox({
     }
   });
   server.on('close', () => clearInterval(timer));
-  return { server, store, engine, cleanup };
+  return { server, store, engine, cleanup, life };
 }
