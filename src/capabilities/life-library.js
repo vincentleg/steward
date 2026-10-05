@@ -106,7 +106,9 @@ export function capabilityPlan(id, w, { affectedIds = null } = {}) {
   const meeting = w.commitments.find((c) => c.id === 'morning');
   const important = meeting.importance >= 0.5 && (!affectedIds || affectedIds.includes('morning'));
   const arrivalHour = 6.083;
-  const arriveInTime = meeting.hour >= arrivalHour + 1;
+  const preparation = meeting.preparationMinutes ?? 0;
+  const travel = meeting.travelMinutes ?? 60;
+  const arriveInTime = meeting.hour >= arrivalHour + (travel + preparation) / 60;
   let options, targets;
   switch (id) {
     case 'travel':
@@ -143,7 +145,7 @@ export function capabilityPlan(id, w, { affectedIds = null } = {}) {
           [
             '$504 replacement − $412 refund = $92 net',
             '31,000 miles preserved',
-            'Arrival 6:05 AM; allow one hour to reach the meeting',
+            `Arrival 6:05 AM; ${travel} minutes travel + ${preparation} minutes preparation required`,
           ],
           {
             constraints: [

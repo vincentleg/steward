@@ -1,3 +1,4 @@
+import { commitmentModel, temporalConsequences, temporalFutures } from './outcome-intelligence.js';
 /** Read-only, domain-independent operational projection. Never grants authority. */
 export function understandWorld(world, { now = Date.now() } = {}) {
   if (!world) return null;
@@ -16,7 +17,7 @@ export function understandWorld(world, { now = Date.now() } = {}) {
       end: c.end || null,
       hour: c.hour ?? null,
       status: c.status || 'scheduled',
-      importance: c.importance ?? 'unknown',
+      importance: world.commitmentAnnotations?.[c.id]?.importance ?? c.importance ?? 'unknown',
       provenance: c.source || (connected ? 'Google Calendar' : 'Synthetic world'),
       confidence: c.confidence ?? (connected ? 1 : 1),
     }))
@@ -29,7 +30,15 @@ export function understandWorld(world, { now = Date.now() } = {}) {
     unknowns.push(
       'Commitment importance is unknown; Calendar presence does not establish priority.',
     );
-  if (connected && commitments.length > 1)
+  if (
+    connected &&
+    commitments.length > 1 &&
+    commitments.some(
+      (c) =>
+        world.commitmentAnnotations?.[c.id]?.travelMinutes == null ||
+        world.commitmentAnnotations?.[c.id]?.preparationMinutes == null,
+    )
+  )
     unknowns.push('Travel and preparation time are not established; feasibility is not assumed.');
   const risks = (world.activeDeviations || []).map((d) => ({
     id: d.id,
@@ -43,9 +52,24 @@ export function understandWorld(world, { now = Date.now() } = {}) {
     })
     .map(([id, at]) => ({ id, at }))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const temporal = temporalConsequences(
+    world.commitments || [],
+    world.commitmentAnnotations || {},
+    now,
+  );
   return {
     mode: connected ? 'connected' : 'synthetic',
     commitments,
+    models: commitments.map((c) =>
+      commitmentModel(
+        { ...(world.commitments || []).find((item) => item.id === c.id), source: c.provenance },
+        world.commitmentAnnotations?.[c.id],
+      ),
+    ),
+    temporalConsequences: temporal,
+    planning: temporal
+      .slice(0, 8)
+      .map((c) => temporalFutures(c, world.commitments, world.commitmentAnnotations)),
     next: commitments.slice(0, 6),
     dependencies,
     risks,

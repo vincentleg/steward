@@ -1,4 +1,5 @@
 import { understandWorld } from '../core/world-understanding.js';
+import { intelligenceState } from '../core/intelligence-state.js';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { CONSTITUTION } from '../core/constitution.js';
@@ -51,7 +52,13 @@ export function privateSurface({
       const url = new URL(req.url, origin);
       if (
         req.method === 'GET' &&
-        ['/account', '/account.js', '/account.css'].includes(url.pathname)
+        [
+          '/account',
+          '/account.js',
+          '/account.css',
+          '/intelligence-core.js',
+          '/intelligence-core.css',
+        ].includes(url.pathname)
       ) {
         const name = url.pathname === '/account' ? 'account.html' : url.pathname.slice(1);
         res.setHeader(
@@ -121,6 +128,38 @@ export function privateSurface({
         json(res, 401, { error: 'Sign in required' });
         return;
       }
+      if (req.method === 'POST' && url.pathname === '/account/api/commitment-rules') {
+        const value = await body(req);
+        fields(value, ['id', 'importance', 'preparationMinutes', 'travelMinutes']);
+        const world = store.get(owner, 'world', 'connected');
+        if (!world?.commitments.some((c) => c.id === value.id)) {
+          json(res, 404, { error: 'Commitment not found' });
+          return;
+        }
+        if (
+          !['unknown', 'optional', 'important', 'must-protect'].includes(value.importance) ||
+          ![value.preparationMinutes, value.travelMinutes].every(
+            (n) => n === null || (Number.isInteger(n) && n >= 0 && n <= 240),
+          )
+        )
+          throw Error('Invalid commitment rule');
+        const annotation = {
+          importance: value.importance,
+          preparationMinutes: value.preparationMinutes,
+          travelMinutes: value.travelMinutes,
+        };
+        world.commitmentAnnotations = { ...world.commitmentAnnotations, [value.id]: annotation };
+        store.put(owner, 'world', 'connected', world);
+        store.put(owner, 'memory', `commitment-rule:${value.id}`, {
+          category: 'explicit-rule',
+          provenance: 'user',
+          confidence: 1,
+          value: world.commitmentAnnotations[value.id],
+          commitmentId: value.id,
+        });
+        json(res, 200, { saved: true, externalActions: 0 });
+        return;
+      }
       const resource = url.pathname.match(
         /^\/account\/api\/(world|event|memory|decision|action|notification)\/([a-zA-Z0-9_.:-]{1,200})$/,
       );
@@ -184,6 +223,9 @@ export function privateSurface({
         return;
       }
       if (req.method === 'GET' && url.pathname === '/account/api/me') {
+        const world = store.get(owner, 'world', 'connected');
+        const understanding = understandWorld(world, { now: now() });
+        const decisions = store.list(owner, 'decision');
         const connections = ['calendar', 'gmail'].map((provider) => {
           const c = store.connection(owner, provider);
           return {
@@ -199,9 +241,19 @@ export function privateSurface({
           googleConfigured: Boolean(google),
           mode: 'connected',
           connections,
-          world: store.get(owner, 'world', 'connected'),
-          understanding: understandWorld(store.get(owner, 'world', 'connected'), { now: now() }),
-          decisions: store.list(owner, 'decision'),
+          world,
+          understanding,
+          presence: intelligenceState(
+            world,
+            [
+              ...decisions,
+              ...(understanding?.planning.some((p) => p.humanDecisions)
+                ? [{ status: 'needs-you' }]
+                : []),
+            ],
+            now(),
+          ),
+          decisions,
           activity: store.list(owner, 'activity'),
           actions: store.list(owner, 'action'),
           constitution: CONSTITUTION,

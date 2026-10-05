@@ -29,7 +29,15 @@ for (const root of ['public', 'src']) {
   walk(root);
 }
 if (origin) {
-  for (const route of ['/', '/life.js', '/connections.js', '/life.css', '/sandbox/app.js']) {
+  for (const route of [
+    '/',
+    '/life.js',
+    '/connections.js',
+    '/life.css',
+    '/intelligence-core.js',
+    '/intelligence-core.css',
+    '/sandbox/app.js',
+  ]) {
     const r = await fetch(origin + route);
     if (!r.ok) throw Error('Public asset unavailable');
     scan(await r.text());

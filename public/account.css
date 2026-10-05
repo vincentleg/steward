@@ -39,7 +39,8 @@ label {
   display: block;
   margin-block: 15px;
 }
-input {
+input,
+select {
   display: block;
   width: 100%;
   padding: 14px;
@@ -98,6 +99,7 @@ li {
 }
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 a:focus-visible {
   outline: 3px solid #19212e;
   outline-offset: 4px;

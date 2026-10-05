@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { impactGraph, detectDeviation } from '../core/impact.js';
 import { simulateFutures, rankFutures, compressDecision } from '../core/intelligence.js';
+import { temporalConsequences, meaningfulChange } from '../core/outcome-intelligence.js';
 const digest = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const clean = (value, limit = 180) =>
   String(value || '')
@@ -152,6 +153,25 @@ export class ConnectedObserver {
               conflicts.push([timed[i].id, timed[j].id]);
           }
         world.conflicts = conflicts;
+        world.temporalConsequences = temporalConsequences(
+          world.commitments,
+          world.commitmentAnnotations || {},
+          this.now(),
+        );
+        world.changeAssessments = changes.map((change) => {
+          const before = previous.find((c) => c.id === change.id);
+          const after =
+            world.commitments.find((c) => c.id === change.id) ||
+            (change.status === 'cancelled' ? change : { status: 'not-observed' });
+          return {
+            providerEventId: change.id,
+            ...meaningfulChange(
+              before,
+              after,
+              world.temporalConsequences.filter((c) => c.from === change.id || c.to === change.id),
+            ),
+          };
+        });
         world.calendarAnalysis.changedEvents = changes.length;
         world.calendarAnalysis.consequences = conflicts.length;
         world.calendarAnalysis.humanDecisions = conflicts.length ? 1 : 0;

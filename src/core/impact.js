@@ -1,4 +1,21 @@
 import { identifier, safeData } from './contracts.js';
+export const IMPACT_RELATIONS = Object.freeze([
+  'DEPENDS ON',
+  'CONFLICTS WITH',
+  'ENABLES',
+  'BLOCKS',
+  'PROTECTS',
+  'THREATENS',
+  'REQUIRES',
+  'AFFECTS',
+  'PRECEDES',
+  'FOLLOWS',
+  'COSTS',
+  'SAVES',
+  'INVOLVES',
+  'SERVES GOAL',
+  'VIOLATES CONSTRAINT',
+]);
 /** Explicit dependency graph; a capability supplies facts, not executable instructions. */
 export function impactGraph({ contextId, sourceId, nodes, edges }) {
   identifier(contextId);
@@ -10,7 +27,10 @@ export function impactGraph({ contextId, sourceId, nodes, edges }) {
     identifier(n.id);
     if (n.contextId !== contextId) throw Error('Cross-context impact');
   }
-  for (const e of edges) if (!ids.has(e.from) || !ids.has(e.to)) throw Error('Unknown dependency');
+  for (const e of edges) {
+    if (!ids.has(e.from) || !ids.has(e.to)) throw Error('Unknown dependency');
+    if (e.relation && !IMPACT_RELATIONS.includes(e.relation)) throw Error('Invalid relationship');
+  }
   const visited = new Set([sourceId]);
   const queue = [sourceId];
   while (queue.length) {

@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+import { mkdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { PrivateStore } from '../src/connected/store.js';
 import { privateServer } from '../src/connected/http.js';
@@ -24,12 +25,29 @@ try {
   await page.getByRole('heading', { name: '0 decisions need you' }).waitFor();
   const owner = store.db.prepare('SELECT id FROM users WHERE login=?').get('browseralice').id;
   store.put(owner, 'world', 'connected', {
+    mode: 'connected',
     commitments: [
       { id: 'private-event', title: 'A private commitment', start: '2026-10-08T09:00:00Z' },
     ],
   });
   await page.reload();
   await page.getByText('A private commitment').waitFor();
+  await page.getByRole('button', { name: 'What matters for this commitment' }).click();
+  await page.getByLabel('Importance', { exact: true }).selectOption('must-protect');
+  await page.getByLabel('Preparation (minutes, blank if unknown)').fill('30');
+  await page.getByLabel('Travel buffer (minutes, blank if unknown)').fill('15');
+  mkdirSync('.data/living-proof', { recursive: true });
+  await page.screenshot({ path: '.data/living-proof/private-rules.png' });
+  await page.getByRole('button', { name: 'Save internal preferences' }).click();
+  await page.getByText('priority must-protect', { exact: false }).waitFor();
+  assert.equal(
+    store.get(owner, 'world', 'connected').commitmentAnnotations['private-event']
+      .preparationMinutes,
+    30,
+  );
+  assert.equal(store.list(owner, 'action').length, 0);
+  assert.equal(store.list(owner, 'memory')[0].category, 'explicit-rule');
+
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 393, height: 852 },

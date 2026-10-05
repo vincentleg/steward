@@ -1,0 +1,115 @@
+.intelligence-presence {
+  width: 370px;
+  height: 320px;
+  position: absolute;
+  top: 202px;
+  right: 48px;
+  isolation: isolate;
+  contain: layout paint;
+  transition:
+    width 0.6s,
+    height 0.6s;
+  pointer-events: auto;
+}
+.intelligence-presence canvas {
+  display: block;
+  max-width: 100%;
+}
+.core-caption {
+  display: block;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  color: #506989;
+  font-family: system-ui, sans-serif;
+  line-height: 24px;
+}
+body[data-product-view='home'] .hero {
+  padding-right: 390px;
+  min-height: 325px;
+}
+body:not([data-product-view='home']) .intelligence-presence {
+  width: 180px;
+  height: 160px;
+  top: 215px;
+}
+body:not([data-product-view='home']) main > section > h1,
+body:not([data-product-view='home']) main > section > .lede {
+  max-width: calc(100% - 200px);
+}
+.shell {
+  position: relative;
+}
+.worth-panel {
+  padding: 22px 0;
+  border-bottom: 1px solid #d9dde5;
+  margin: 18px 0 20px;
+}
+.worth-panel h3 {
+  font-size: 23px;
+  max-width: 620px;
+  margin-top: 10px;
+}
+.worth-panel p {
+  margin: 8px 0;
+}
+.worth-panel small {
+  color: #536174;
+}
+.consequence-detail {
+  padding: 12px 0;
+}
+.consequence-detail summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.consequence-detail p {
+  margin: 16px 0;
+}
+.private-presence {
+  position: relative;
+  top: auto !important;
+  right: auto;
+  width: 250px !important;
+  height: 210px !important;
+  margin: auto;
+}
+@media (max-width: 700px) {
+  .intelligence-presence {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 210px;
+    height: 175px;
+    margin: 14px auto -6px;
+    transition: none;
+  }
+  body:not([data-product-view='home']) .intelligence-presence {
+    position: relative;
+    top: auto;
+    width: 140px;
+    height: 112px;
+    margin: 6px auto -8px;
+  }
+  body[data-product-view='home'] .hero {
+    padding-right: 0;
+    min-height: 0;
+  }
+  body:not([data-product-view='home']) main > section > h1,
+  body:not([data-product-view='home']) main > section > .lede {
+    max-width: 100%;
+  }
+  .core-caption {
+    font-size: 8px;
+    letter-spacing: 1.2px;
+  }
+  .worth-panel h3 {
+    font-size: 21px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intelligence-presence {
+    transition: none;
+  }
+}

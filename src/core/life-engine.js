@@ -5,6 +5,7 @@ import { impactGraph, detectDeviation } from './impact.js';
 import { simulateFutures, rankFutures, compressDecision } from './intelligence.js';
 import { appendMemory } from './memory.js';
 import { CONSTITUTION } from './constitution.js';
+import { graphConsequences, worthToYou, meaningfulChange } from './outcome-intelligence.js';
 import { SCENARIOS, capabilityPlan } from '../capabilities/life-library.js';
 const MODES = ['observe', 'ask', 'rules'];
 const ALLOWED = [
@@ -47,7 +48,16 @@ export function seedLife(id = randomUUID()) {
       { id: 'strategic-goal', label: 'Meet relevant founders without sacrificing commitments' },
     ],
     commitments: [
-      { id: 'morning', label: 'Sarah · tomorrow', hour: 9, importance: 1, status: 'planned' },
+      {
+        id: 'morning',
+        label: 'Sarah · tomorrow',
+        hour: 9,
+        importance: 1,
+        status: 'planned',
+        preparationMinutes: 0,
+        travelMinutes: 60,
+        preferenceSource: 'Seeded synthetic preference',
+      },
       { id: 'event-a', label: 'AI infrastructure · 6 PM', status: 'confirmed' },
       { id: 'founder', label: 'Founder event · 6:30 PM', status: 'waitlisted' },
       { id: 'event-c', label: 'Investor event · 8 PM', status: 'confirmed' },
@@ -61,6 +71,7 @@ export function seedLife(id = randomUUID()) {
     ...world,
     id,
     revision: 0,
+    commitmentAnnotations: {},
     createdAt: new Date().toISOString(),
     deadlines: {
       benefit: new Date(Date.now() + 86400000).toISOString(),
@@ -182,7 +193,11 @@ export class LifeEngine {
     const { targets } = capabilityPlan(r.scenario, w);
     // Traverse the shared dependency graph; unreachable entities never affect the resolution.
     const source = targets[0],
-      edges = w.dependencies.map(([from, to]) => ({ from, to }));
+      edges = w.dependencies.map(([from, to]) => ({
+        from,
+        to,
+        relation: to === 'sarah' ? 'INVOLVES' : to === 'strategic-goal' ? 'SERVES GOAL' : 'AFFECTS',
+      }));
     const ids = new Set([source]);
     let pending = [source];
     while (pending.length) {
@@ -256,6 +271,9 @@ export class LifeEngine {
     r.recommended = r.evaluation.recommended;
     const selected = options.find((o) => o.id === r.recommended);
     r.selected = selected || null;
+    r.consequences = graphConsequences(r.impact);
+    r.relevance = meaningfulChange({ status: 'on-track' }, { status: 'at-risk' }, r.consequences);
+    r.worth = worthToYou(selected, options, w.settings);
     r.requiresApproval =
       !selected ||
       w.settings.autonomy === 'ask' ||
@@ -265,9 +283,12 @@ export class LifeEngine {
     r.compression = compressDecision({
       impacts: { nodes: [{ id: source }, ...r.impact.nodes] },
       futures: r.futures,
-      actions: selected
-        ? [{ id: selected.id, allowed: true, requiresApproval: r.requiresApproval }]
-        : [{ id: 'evidence', allowed: false }],
+      actions:
+        w.settings.autonomy === 'observe'
+          ? []
+          : selected
+            ? [{ id: selected.id, allowed: true, requiresApproval: r.requiresApproval }]
+            : [{ id: 'evidence', allowed: false }],
     });
     r.evidence = selected?.evidence || [
       'No future satisfies every current constraint. Change the world or your budget.',
@@ -712,6 +733,8 @@ export class LifeEngine {
       spendingAuthority: [0, 250],
       meetingHour: [0, 23.99],
       meetingImportance: [0, 1],
+      meetingPreparation: [0, 240],
+      meetingTravel: [0, 240],
       airlineUseProbability: [0, 1],
     };
     const enums = {
@@ -742,14 +765,24 @@ export class LifeEngine {
       if (key === 'meetingImportance')
         w.commitments.find((c) => c.id === 'morning').importance = value;
       else if (key === 'meetingHour') w.commitments.find((c) => c.id === 'morning').hour = value;
-      else if (key === 'hotel') {
+      else if (key === 'meetingPreparation' || key === 'meetingTravel') {
+        const c = w.commitments.find((c) => c.id === 'morning');
+        c[key === 'meetingPreparation' ? 'preparationMinutes' : 'travelMinutes'] = value;
+        c.preferenceSource = 'Explicit user rule';
+      } else if (key === 'hotel') {
         w.travel.hotel = value;
         if (!w.dependencies.some(([a, b]) => a === 'flight' && b === 'hotel'))
           w.dependencies.push(['flight', 'hotel'], ['hotel', 'cash']);
       } else w.settings[key] = value;
     }
     const temporary = Object.keys(changes).some((k) =>
-      ['meetingHour', 'meetingImportance', 'deliveryUrgent'].includes(k),
+      [
+        'meetingHour',
+        'meetingImportance',
+        'meetingPreparation',
+        'meetingTravel',
+        'deliveryUrgent',
+      ].includes(k),
     );
     const fact = Object.keys(changes).every((k) => k === 'hotel');
     appendMemory(w, {

@@ -10,6 +10,7 @@
     />
     <title>Steward — Your life is handled.</title>
     <link rel="stylesheet" href="/life.css" />
+    <link rel="stylesheet" href="/intelligence-core.css" />
   </head>
   <body>
     <div class="shell">
@@ -22,6 +23,12 @@
         <button data-view="home">Your world</button><button data-view="try">Try Steward</button
         ><button data-view="connect">Connect my life <span>↗</span></button>
       </nav>
+      <div
+        id="intelligence-core"
+        class="intelligence-presence"
+        role="region"
+        aria-label="Steward activity"
+      ></div>
       <main id="content">
         <section class="loading">
           <div class="loading-mark">S</div>
@@ -32,7 +39,8 @@
       </main>
       <footer>
         <span>YOUR LIFE. YOUR PERMISSIONS.</span><button id="trust">Constitution & privacy</button
-        ><a href="/sandbox/travel">Original travel demo ↗</a><span>Session expires after 30 minutes.</span>
+        ><a href="/sandbox/travel">Original travel demo ↗</a
+        ><span>Session expires after 30 minutes.</span>
       </footer>
     </div>
     <dialog id="sheet" aria-labelledby="sheet-title">

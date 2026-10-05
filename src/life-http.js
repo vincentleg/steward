@@ -1,4 +1,5 @@
 import { understandWorld } from './core/world-understanding.js';
+import { intelligenceState } from './core/intelligence-state.js';
 import { readFileSync } from 'node:fs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { LifeEngine } from './core/life-engine.js';
@@ -18,7 +19,11 @@ export function lifeService({
     if (body.world)
       body = {
         ...body,
-        world: { ...body.world, understanding: understandWorld(body.world, { now: now() }) },
+        world: {
+          ...body.world,
+          understanding: understandWorld(body.world, { now: now() }),
+          presence: intelligenceState(body.world),
+        },
       };
     res.end(JSON.stringify(body));
   };
@@ -48,6 +53,8 @@ export function lifeService({
         return true;
       }
       const assets = {
+        '/intelligence-core.js': ['public/intelligence-core.js', 'text/javascript'],
+        '/intelligence-core.css': ['public/intelligence-core.css', 'text/css'],
         '/life.js': ['public/life.js', 'text/javascript'],
         '/life.css': ['public/life.css', 'text/css'],
         '/connections.js': ['public/connections.js', 'text/javascript'],

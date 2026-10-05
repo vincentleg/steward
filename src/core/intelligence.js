@@ -10,6 +10,11 @@ export const VALUE_DIMENSIONS = Object.freeze([
   'preferences',
   'reversibility',
   'rights',
+  'relationships',
+  'opportunity',
+  'goalAlignment',
+  'effort',
+  'uncertainty',
 ]);
 export function valueEstimate({ nominal, probability = 1, confidence = 1, assumptions = [] }) {
   finite(nominal);

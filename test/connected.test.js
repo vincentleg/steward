@@ -443,3 +443,61 @@ test('private HTTP accounts authenticate on server; cross-user arbitrary IDs, or
     store.close();
   }
 });
+
+test('internal commitment rules are owner scoped, bounded, and cannot grant provider authority', async () => {
+  const { store, a, b, ta, tb } = fixture();
+  store.put(a, 'world', 'connected', {
+    mode: 'connected',
+    commitments: [
+      {
+        id: 'only-a',
+        title: 'Private A',
+        start: '2026-10-05T09:00:00Z',
+        end: '2026-10-05T10:00:00Z',
+      },
+    ],
+  });
+  store.put(b, 'world', 'connected', {
+    mode: 'connected',
+    commitments: [{ id: 'only-b', title: 'Private B' }],
+  });
+  const server = privateServer({ store, origin: 'http://localhost:3406' });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const request = (token, value) =>
+    fetch(origin + '/account/api/commitment-rules', {
+      method: 'POST',
+      headers: {
+        Origin: 'http://localhost:3406',
+        'Content-Type': 'application/json',
+        Cookie: `steward-local=${token}`,
+      },
+      body: JSON.stringify(value),
+    });
+  const rule = {
+    id: 'only-a',
+    importance: 'must-protect',
+    preparationMinutes: 30,
+    travelMinutes: null,
+  };
+  try {
+    assert.equal((await request(tb, rule)).status, 404);
+    assert.equal((await request('', rule)).status, 401);
+    assert.equal((await request(ta, { ...rule, spendingAuthority: 1000 })).status, 400);
+    assert.equal((await request(ta, { ...rule, travelMinutes: 241 })).status, 400);
+    const response = await request(ta, rule);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).externalActions, 0);
+    assert.equal(
+      store.get(a, 'world', 'connected').commitmentAnnotations['only-a'].importance,
+      'must-protect',
+    );
+    assert.equal(store.get(b, 'world', 'connected').commitmentAnnotations, undefined);
+    assert.equal(store.list(a, 'action').length, 0);
+    assert.equal(store.list(a, 'memory')[0].category, 'explicit-rule');
+    assert.equal(store.list(b, 'memory').length, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    store.close();
+  }
+});
