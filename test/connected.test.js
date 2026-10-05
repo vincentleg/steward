@@ -4,7 +4,8 @@ import { randomBytes } from 'node:crypto';
 import { PrivateStore } from '../src/connected/store.js';
 import { GoogleSensor, GOOGLE_SCOPES } from '../src/connected/google.js';
 import { ConnectedObserver } from '../src/connected/observer.js';
-import { privateServer } from '../src/connected/http.js';
+import { privateServer, privateSurface } from '../src/connected/http.js';
+import { createSandbox } from '../src/public-sandbox.js';
 
 function fixture() {
   let time = 1000000;
@@ -19,6 +20,42 @@ function fixture() {
   const tb = store.login('bob', 'correct-horse-battery-B');
   return { store, a, b, ta, tb, advance: (amount = 9 * 3600000) => (time += amount) };
 }
+test('one product router composes authenticated accounts without contaminating anonymous routes', async () => {
+  const { store, a, ta } = fixture();
+  store.put(a, 'world', 'connected', { private: 'owner-only-world' });
+  const { server } = createSandbox({
+    pace: 0,
+    publicBaseUrl: 'http://localhost:3406',
+    privateSurface: privateSurface({ store, origin: 'http://localhost:3406' }),
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const headers = { Cookie: `steward-local=${ta}` };
+    const root = await fetch(base + '/', { headers });
+    const direct = await fetch(base + '/sandbox', { headers });
+    const tracked = await fetch(base + '/sandbox?fbclid=test', { headers });
+    const html = await direct.text();
+    assert.equal(await root.text(), html);
+    assert.equal(await tracked.text(), html);
+    assert.ok(html.includes('/life.js'));
+    assert.equal(html.includes('owner-only-world'), false);
+    assert.equal((await fetch(base + '/account/api/me')).status, 401);
+    const account = await (await fetch(base + '/account/api/me', { headers })).json();
+    assert.equal(account.world.private, 'owner-only-world');
+    const response = await fetch(base + '/world/api/sessions', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json', Origin: 'http://localhost:3406' },
+      body: '{}',
+    });
+    assert.equal(response.status, 201);
+    const synthetic = await response.json();
+    assert.equal(JSON.stringify(synthetic).includes('owner-only-world'), false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    store.close();
+  }
+});
 test('distinct accounts, owner scoped records, encrypted credentials, logout and expiration', () => {
   const { store, a, b, ta, tb, advance } = fixture();
   assert.equal(store.owner(ta), a);

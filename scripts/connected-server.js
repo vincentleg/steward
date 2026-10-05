@@ -1,10 +1,12 @@
 import { PrivateStore } from '../src/connected/store.js';
-import { privateServer } from '../src/connected/http.js';
+import { privateSurface } from '../src/connected/http.js';
+import { createSandbox } from '../src/public-sandbox.js';
 import { GoogleSensor } from '../src/connected/google.js';
 import { ConnectedObserver } from '../src/connected/observer.js';
 import { mkdirSync } from 'node:fs';
 
-// Intentionally independent from cloud-server.js. Render Free's filesystem is ephemeral.
+// Local harness of the SAME product router, with the private surface explicitly composed.
+// Production keeps that surface disabled pending durable storage and live release gates.
 if (process.env.RENDER || process.env.RENDER_SERVICE_ID)
   throw Error('Connected deployment requires reviewed durable storage; disabled on Render');
 const key = Buffer.from(process.env.CONNECTION_ENCRYPTION_KEY || '', 'base64');
@@ -23,7 +25,10 @@ const google =
       })
     : null;
 const observer = google ? new ConnectedObserver({ store, google }) : null;
-const server = privateServer({ store, google, observer, origin });
+const { server } = createSandbox({
+  publicBaseUrl: origin,
+  privateSurface: privateSurface({ store, google, observer, origin }),
+});
 server.requestTimeout = 15000;
 server.headersTimeout = 10000;
 server.listen(port, '127.0.0.1', () =>

@@ -13,6 +13,7 @@ export function createSandbox({
   now = () => Date.now(),
   rateLimit = 120,
   maxSessions = 150,
+  privateSurface = null,
   publicBaseUrl = process.env.PUBLIC_BASE_URL,
   rateLimitKey = (req) =>
     String(req.headers['cf-connecting-ip'] || req.socket.remoteAddress || 'local'),
@@ -59,6 +60,15 @@ export function createSandbox({
     try {
       cleanup();
       const url = new URL(req.url, 'http://localhost');
+      // Only trusted server composition can enable the private surface.
+      if (
+        privateSurface &&
+        (/^\/account(?:\/|$)/.test(url.pathname) ||
+          ['/account.js', '/account.css'].includes(url.pathname))
+      ) {
+        await privateSurface(req, res);
+        return;
+      }
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('Referrer-Policy', 'no-referrer');
       res.setHeader(

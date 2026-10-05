@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { CONSTITUTION } from '../core/constitution.js';
 import { randomUUID } from 'node:crypto';
 
-export function privateServer({ store, google = null, observer = null, origin, now = Date.now }) {
+export function privateSurface({ store, google = null, observer = null, origin, now = Date.now }) {
   const base = new URL(origin);
   const secure = base.protocol === 'https:';
   if (!secure && !['localhost', '127.0.0.1'].includes(base.hostname)) throw Error('HTTPS required');
@@ -30,7 +30,7 @@ export function privateServer({ store, google = null, observer = null, origin, n
   function fields(value, keys) {
     if (Object.keys(value).some((key) => !keys.includes(key))) throw Error('Unexpected input');
   }
-  return http.createServer(async (req, res) => {
+  return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
@@ -263,5 +263,10 @@ export function privateServer({ store, google = null, observer = null, origin, n
     } catch {
       json(res, 400, { error: 'Request could not be completed' });
     }
-  });
+  };
+}
+
+// Compatibility harness for focused account tests.
+export function privateServer(options) {
+  return http.createServer(privateSurface(options));
 }

@@ -1,10 +1,16 @@
 # Phase 6 — private development candidate
 
-Public production remains `b98d0e4 / public-v2-1`. Connected mode is **not deployed or enabled**. No real Google integration has been verified. No new spending.
+Public production is `8a2d5e5 / public-sandbox-canonical-v2`; `b98d0e4 / public-v2-1` remains protected. Connected mode is **not deployed or enabled**. No real Google integration has been verified. No new spending.
+
+## One product, access-scoped routes
+
+`/` enters `/sandbox`. `/sandbox`, `/sandbox?fbclid=...` and the `/life` compatibility alias serve the same public UI and shared engine, not different product generations. `/sandbox/travel` preserves the original travel fixture. Tracking parameters never select identity, state, version or authority.
+
+`/account` is the private authenticated surface of the same product router, composed only by trusted server configuration. Production currently has no private surface attached: `/account` and its APIs return 404. The local connected harness attaches the owner-scoped private handler alongside the SAME public routes. Future approved releases update this one codebase and existing Render service. Private activation still requires durable storage and live security gates; this change enables no Google configuration.
 
 ## Implemented and locally tested
 
-- Separate private server, username/password accounts, scrypt password hashing, random opaque eight-hour sessions, hashed session storage, logout, Origin-checked mutations, rate limits, bounded bodies, generic errors and no-store responses.
+- Owner-scoped private surface, username/password accounts, scrypt password hashing, random opaque eight-hour sessions, hashed session storage, logout, Origin-checked mutations, rate limits, bounded bodies, generic errors and no-store responses.
 - SQLite development persistence; database file mode 0600. Private records and OAuth credentials encrypted using AES-256-GCM with owner/type/object bound authenticated encryption. Session tokens remain server-owned HttpOnly cookies; Secure and `__Host-` prefix on HTTPS. No personal access/refresh tokens in environment variables or browser storage.
 - Explicit owner-scoped worlds, events, memories, decisions, actions, notifications and activity. No connection fallback. Distinct real local accounts and shared-device logout tested.
 - Google authorization-code adapter with PKCE, session-bound ten-minute single-use state, server-side exchange and refresh, granted-scope checks, fixed read endpoint allowlist and disconnect/revocation.
@@ -52,4 +58,4 @@ Official references: [server OAuth](https://developers.google.com/identity/proto
 
 `npm test`; `node scripts/connected-e2e.js`; `npm run test:e2e`; `STEWARD_TEST_URL=https://steward-public.onrender.com node scripts/v2-e2e.js`.
 
-The first set verifies the private foundation locally; fixture adapters are explicitly named. The last verifies the unchanged public V2 product. Stay on `public-v2-1` for deployment. No production deployment changes are part of this candidate.
+The first set verifies the private foundation locally; fixture adapters are explicitly named. The last verifies the unchanged public V2 product. Deploy only the latest release that has passed its public/private gates to the existing Render service. No production deployment changes are part of this candidate.
