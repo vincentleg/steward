@@ -210,3 +210,14 @@ test('bounded numeric predicates verify required arrival and preparation, not me
     ),
   );
 });
+
+test('unchanged settings are not a temporal deviation; changed timing retains before and after', () => {
+  const engine = new LifeEngine({ pace: 0, now: () => now }),
+    w = engine.create();
+  engine.change(w, { settings: { meetingHour: 9, meetingPreparation: 0, meetingTravel: 60 } });
+  assert.equal(w.temporalChanges?.length || 0, 0);
+  engine.change(w, { settings: { meetingHour: 8.5 } });
+  assert.equal(w.temporalChanges.length, 1);
+  assert.equal(w.temporalChanges[0].expected.hour, 9);
+  assert.equal(w.temporalChanges[0].observed.hour, 8.5);
+});

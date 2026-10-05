@@ -1063,7 +1063,11 @@ export class LifeEngine {
       } else w.settings[key] = value;
     }
     if (
-      ['meetingHour', 'meetingPreparation', 'meetingTravel'].some((k) => Object.hasOwn(changes, k))
+      [
+        ['meetingHour', 'hour'],
+        ['meetingPreparation', 'preparationMinutes'],
+        ['meetingTravel', 'travelMinutes'],
+      ].some(([key, field]) => Object.hasOwn(changes, key) && changes[key] !== beforeMeeting[field])
     ) {
       const after = w.commitments.find((c) => c.id === 'morning'),
         at = new Date(this.time(w)).toISOString();

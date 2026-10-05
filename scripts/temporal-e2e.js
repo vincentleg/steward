@@ -30,12 +30,14 @@ try {
   await p.getByRole('button', { name: 'Change the world', exact: true }).click();
   await p.locator('[name=confirmationMode]').selectOption('delayed');
   await p.getByRole('button', { name: 'Apply rules', exact: true }).click();
+  await p.waitForFunction(() => !document.querySelector('dialog').open);
   await p.getByRole('button', { name: 'Try Steward →', exact: true }).click();
   await p.locator('[data-scenario=travel]').click();
   await wait('decision.pending');
   await p.getByRole('button', { name: 'Change the world ↗', exact: true }).click();
   await p.locator('[name=meetingHour]').fill('8.5');
   await p.getByRole('button', { name: 'Apply rules', exact: true }).click();
+  await p.waitForFunction(() => !document.querySelector('dialog').open);
   await p.getByRole('heading', { name: 'The time changed. The dependencies follow.' }).waitFor();
   assert.equal((await state()).world.temporalChanges.at(-1).observed.hour, 8.5);
   await p.getByRole('button', { name: 'Approve plan', exact: true }).click();
@@ -72,6 +74,7 @@ try {
   await p.getByRole('button', { name: 'Change the world', exact: true }).click();
   await p.locator('[name=confirmationMode]').selectOption('conflicting');
   await p.getByRole('button', { name: 'Apply rules', exact: true }).click();
+  await p.waitForFunction(() => !document.querySelector('dialog').open);
   await p.getByRole('button', { name: 'Try Steward →', exact: true }).click();
   await p.locator('[data-scenario=money]').click();
   await wait('decision.pending');
