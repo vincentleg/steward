@@ -195,6 +195,7 @@ function connectionCards() {
 function connect() {
   return `<section class="reveal"><button class="text-button" data-view="home">← Steward</button><div class="connect-hero"><span class="eyebrow">CONNECTION CENTER · EARLY ACCESS PREVIEW</span><h1>Connect my life.</h1><p class="lede">Give Steward the context and capabilities it needs to understand your world and act on your behalf.</p><p><b>You control what Steward can see and do.</b></p><p class="note">Connections are coming soon. Explore planned capabilities and permission boundaries. Nothing here initiates authorization or collects credentials.</p></div><div class="connection-diagram"><div class="diagram-domains">${['Email', 'Calendar', 'Money', 'Travel', 'Transport', 'Work', 'People', 'Home'].map((d) => `<span>${d}</span>`).join('')}</div><span aria-hidden="true">→</span><div class="diagram-core">STEWARD</div><span aria-hidden="true">→</span><div class="diagram-result">UNDERSTAND<br>DECIDE · ACT · VERIFY</div></div><label for="connection-search">Search connections</label><input id="connection-search" class="search" type="search" placeholder="Air France, Calendar, Transport, Money…" value="${esc(query)}" autocomplete="off"><div class="filters" aria-label="Connection categories">${['All', ...categories].map((c) => `<button data-filter="${c}" aria-pressed="${filter === c}">${c}</button>`).join('')}</div><div id="connection-results">${connectionCards()}</div><section class="privacy-preview"><span class="eyebrow">YOUR LIFE. YOUR PERMISSIONS.</span><h2>Compartmentalized access.</h2><p class="lede">One intelligence does not mean every service gets your entire world. Each capability receives only the context its task requires.</p><div class="privacy-columns"><div><h3>A future airline action could access</h3><ul><li>The relevant trip</li><li>Selected travel preferences</li><li>An explicitly authorized payment method</li></ul></div><div><h3>It could not access</h3><ul><li>Unrelated private messages</li><li>Unrelated finances</li><li>Health information</li></ul></div></div><p class="note">Proposed permission architecture, not a claim of current account connectivity. Connections would be individually permissioned and revocable.</p><button class="secondary" data-trust>Steward Constitution & privacy</button></section></section>`;
 }
+let renderedView = null;
 function render() {
   if (!world) return;
   document
@@ -208,6 +209,9 @@ function render() {
         : view === 'resolution'
           ? resolution()
           : connect();
+  if (renderedView === view)
+    content.querySelectorAll('.reveal').forEach((el) => el.classList.remove('reveal'));
+  renderedView = view;
   bind();
 }
 function openDialog(kicker, html) {
