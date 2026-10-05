@@ -220,7 +220,17 @@ test('calendar adapter fixtures detect changes and conflicts, deduplicate, and n
   start = '2026-10-06T15:00:00Z';
   await observer.sync(a, 'calendar');
   assert.equal(store.list(a, 'event').length, 1);
+  const temporal = store.get(a, 'world', 'connected');
+  assert.equal(temporal.temporalChanges.at(-1).expected.start, '2026-10-06T14:00:00Z');
+  assert.equal(temporal.temporalChanges.at(-1).observed.start, start);
+  assert.equal(
+    temporal.observations.filter((f) => f.field === 'start' && f.value === start).length,
+    1,
+  );
+  assert.equal(store.get(b, 'world', 'connected'), null);
+  const observations = temporal.observations.length;
   await observer.sync(a, 'calendar');
+  assert.equal(store.get(a, 'world', 'connected').observations.length, observations);
   assert.equal(store.list(a, 'event').length, 1);
   store.disconnect(a, 'calendar');
   await assert.rejects(observer.sync(a, 'calendar'));

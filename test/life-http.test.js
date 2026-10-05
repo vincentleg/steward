@@ -127,3 +127,56 @@ test('life API has no mail relay, wrong-origin writes, oversized inputs or repla
     await f.close();
   }
 });
+
+test('monitoring re-evaluates an elapsed expectation without a browser request, and observations cannot cross sessions or grant authority', async () => {
+  let time = Date.now();
+  const f = await fixture({ now: () => time, ttlMs: 60 * 60 * 1000 });
+  try {
+    const a = await f.create(),
+      b = await f.create(),
+      path = '/world/api/sessions/' + a.world.id;
+    assert.equal(
+      (await f.post(path + '/change', { settings: { confirmationMode: 'delayed' } }, a.accessToken))
+        .status,
+      200,
+    );
+    const w = f.life.sessions.get(a.world.id).world,
+      r = await f.life.engine.start(w, 'money');
+    await f.life.engine.approve(w, r.id, w.revision);
+    assert.equal(r.state, 'outcome.watching');
+    time += 21 * 60000;
+    f.cleanup();
+    assert.equal(r.state, 'outcome.replanning');
+    assert.equal(w.money.refunds.length, 0);
+    assert.equal(
+      (
+        await f.post(
+          path + '/change',
+          { observation: { id: 'receipt', kind: 'refund-confirmed' } },
+          b.accessToken,
+        )
+      ).status,
+      404,
+    );
+    for (const observation of [
+      { id: 'attack', kind: 'send_message' },
+      { id: 'attack', kind: 'refund-confirmed', recipient: 'outside' },
+      { id: 'attack', kind: 'advance', minutes: -1 },
+    ])
+      assert.equal((await f.post(path + '/change', { observation }, a.accessToken)).status, 400);
+    assert.equal(
+      (
+        await f.post(
+          path + '/change',
+          { observation: { id: 'receipt', kind: 'refund-confirmed' } },
+          a.accessToken,
+        )
+      ).status,
+      200,
+    );
+    assert.equal(r.outcome.verified, true);
+    assert.equal(f.life.sessions.get(b.world.id).world.observations.length, 0);
+  } finally {
+    await f.close();
+  }
+});

@@ -19,6 +19,9 @@ export function createIntelligenceCore(host) {
     acting: [0.65, 0.55, 5],
     verifying: [0.4, 0.4, 4],
     resolved: [0.15, 0.25, 3],
+    watching: [0.18, 0.3, 3],
+    contradicted: [0.3, 0.4, 5],
+    replanning: [0.4, 0.45, 5],
   };
   const labels = {
     stable: 'STEWARD IS WATCHING',
@@ -32,6 +35,9 @@ export function createIntelligenceCore(host) {
     acting: 'ACTING WITHIN AUTHORITY',
     verifying: 'VERIFYING THE OUTCOME',
     resolved: 'OUTCOME RESTORED · WATCHING',
+    watching: 'AWAITING EVIDENCE',
+    contradicted: 'EVIDENCE CONFLICTS',
+    replanning: 'OUTCOME STILL OPEN',
   };
   let target = { state: 'stable', consequences: 0, futures: 0, uncertainty: 0 },
     energy = 0.12,
@@ -66,7 +72,7 @@ export function createIntelligenceCore(host) {
     ctx.clearRect(0, 0, width, height);
     // Continuous asymmetric contour sheets, not rotating circles or particles.
     for (let layer = 0; layer < 10; layer++) {
-      const radius = unit * (0.5 + layer * 0.056),
+      const radius = unit * (0.5 + layer * (0.056 - (target.temporalPressure || 0) * 0.006)),
         alpha = 0.18 + (layer % 3) * 0.09;
       ctx.beginPath();
       for (let i = 0; i <= 160; i++) {
@@ -105,7 +111,8 @@ export function createIntelligenceCore(host) {
         const u = k / 100,
           a = u * Math.PI * 2 + j * 2.399;
         const radius = unit * (0.18 + 0.6 * Math.sin(u * Math.PI));
-        const x = cx + Math.cos(a + t * 0.035) * radius;
+        const split = target.contradiction ? (j % 2 ? 1 : -1) * unit * 0.065 : 0;
+        const x = cx + Math.cos(a + t * 0.035) * radius + split;
         const y =
           cy + Math.sin(a) * radius * 0.58 + Math.sin(u * Math.PI * 2 + t * 0.2 + j) * unit * 0.07;
         if (!k) ctx.moveTo(x, y);
@@ -115,7 +122,9 @@ export function createIntelligenceCore(host) {
       ctx.lineWidth = 0.7;
       ctx.stroke();
     }
-    const inward = ['verifying', 'signal', 'deviation', 'modeling'].includes(target.state);
+    const inward = ['verifying', 'resolved', 'signal', 'deviation', 'modeling'].includes(
+      target.state,
+    );
     if (pulse > 0.005) {
       const r = unit * (inward ? 0.35 + pulse * 0.95 : 1.3 - pulse * 0.95);
       ctx.beginPath();
@@ -175,6 +184,10 @@ export function createIntelligenceCore(host) {
     } else draw();
   }
   function motion() {
+    if (media.matches) {
+      energy = (profiles[target.state] || profiles.stable)[0];
+      richness = (profiles[target.state] || profiles.stable)[2];
+    }
     schedule();
   }
   function visibility() {
@@ -210,8 +223,10 @@ export function createIntelligenceCore(host) {
   schedule();
   return {
     update(next = { state: 'stable' }) {
-      if (next.state !== target.state || next.signalId !== target.signalId) pulse = 1;
-      target = next;
+      const changed = next.state !== target.state || next.signalId !== target.signalId;
+      if (changed) pulse = 1;
+      target =
+        media.matches && !changed ? { ...next, temporalPressure: target.temporalPressure } : next;
       host.dataset.state = next.state;
       caption.textContent = labels[next.state] || labels.stable;
       if (media.matches) {

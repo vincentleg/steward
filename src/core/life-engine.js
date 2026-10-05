@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { principal, representationContext } from './identity.js';
-import { personalWorld, verifyOutcome } from './world.js';
+import { personalWorld } from './world.js';
 import { impactGraph, detectDeviation } from './impact.js';
 import { simulateFutures, rankFutures, compressDecision } from './intelligence.js';
 import { appendMemory } from './memory.js';
 import { CONSTITUTION } from './constitution.js';
+import { recordObservation, verifyExpectedOutcome, optionalityPlan } from './temporal-truth.js';
 import { graphConsequences, worthToYou, meaningfulChange } from './outcome-intelligence.js';
 import { SCENARIOS, capabilityPlan } from '../capabilities/life-library.js';
 const MODES = ['observe', 'ask', 'rules'];
@@ -72,6 +73,9 @@ export function seedLife(id = randomUUID()) {
     id,
     revision: 0,
     commitmentAnnotations: {},
+    observations: [],
+    clockOffsetMinutes: 0,
+    processedObservations: [],
     createdAt: new Date().toISOString(),
     deadlines: {
       benefit: new Date(Date.now() + 86400000).toISOString(),
@@ -90,9 +94,10 @@ export function seedLife(id = randomUUID()) {
       deliveryUrgent: true,
       subscriptionUsage: 'low',
       airlineUseProbability: 0.3,
+      confirmationMode: 'immediate',
     },
     travel: { flight: 'SFO → JFK', status: 'scheduled', arrival: 'Tonight', hotel: 'confirmed' },
-    money: { charges: [], refunds: [] },
+    money: { charges: [], refunds: [], credits: [] },
     purchases: { order: 'in transit' },
     subscriptions: { subscription: 'renewed' },
     benefits: { benefit: 'expires in 24 hours' },
@@ -188,6 +193,9 @@ export class LifeEngine {
     w.revision++;
     if (r) r.state = type;
     return e;
+  }
+  time(w) {
+    return this.now() + (w.clockOffsetMinutes || 0) * 60000;
   }
   evaluate(w, r) {
     const { targets } = capabilityPlan(r.scenario, w);
@@ -399,6 +407,7 @@ export class LifeEngine {
   async execute(w, r) {
     if (this.busy.has(r.id)) return;
     this.busy.add(r.id);
+    r.intent ||= this.expectedOutcome(r);
     try {
       for (const [i, op] of r.selected.operations.entries()) {
         await sleep(this.pace);
@@ -424,41 +433,9 @@ export class LifeEngine {
       this.emit(w, r, 'outcome.verifying', 'Verifying the intended outcome');
       await sleep(this.pace);
       if (r.state === 'stopped') return;
-      r.outcome = verifyOutcome(w, [
-        ...r.selected.operations.map((op, i) => ({
-          id: `check:${r.id}:${i}`,
-          label: this.verificationLabel(op, r),
-          check: () => this.verify(w, r, op),
-        })),
-        {
-          id: `goal:${r.id}`,
-          label: 'Intended outcome independently verified',
-          check: () => this.goalSatisfied(w, r),
-        },
-      ]);
-      if (!r.outcome.verified) {
-        this.emit(
-          w,
-          r,
-          'verification.failed',
-          'The outcome is not restored · further judgment needed',
-        );
-        return;
-      }
-      r.deviation.status = 'resolved';
-      w.activeDeviations = w.activeDeviations.filter((d) => d.id !== r.deviation.id);
-      w.activeResolutions = w.activeResolutions.filter((a) => a.id !== r.id);
-      w.outcomeHistory.push({ resolutionId: r.id, scenario: r.scenario, ...r.outcome });
-      w.outcomeHistory = w.outcomeHistory.slice(-30);
-      appendMemory(w, {
-        id: `resolution:${r.id}`,
-        contextId: w.context.id,
-        kind: 'resolution-history',
-        value: { scenario: r.scenario, option: r.recommended, verified: true },
-        source: { type: 'verification', id: r.id },
-        evidenceIds: r.outcome.evidence.map((e) => e.id),
-      });
-      this.emit(w, r, 'outcome.restored', 'Outcome restored · watching again');
+      this.checkOutcome(w, r);
+      if (!r.outcome.verified) return;
+      this.restore(w, r);
     } catch {
       if (r.state !== 'stopped')
         this.emit(
@@ -470,6 +447,267 @@ export class LifeEngine {
     } finally {
       this.busy.delete(r.id);
     }
+  }
+  restore(w, r) {
+    if (w.outcomeHistory.some((h) => h.resolutionId === r.id)) return;
+    r.deviation.status = 'resolved';
+    w.activeDeviations = w.activeDeviations.filter((d) => d.id !== r.deviation.id);
+    w.activeResolutions = w.activeResolutions.filter((a) => a.id !== r.id);
+    w.outcomeHistory.push({ resolutionId: r.id, scenario: r.scenario, ...r.outcome });
+    w.outcomeHistory = w.outcomeHistory.slice(-30);
+    appendMemory(w, {
+      id: `resolution:${r.id}`,
+      contextId: w.context.id,
+      kind: 'resolution-history',
+      value: { scenario: r.scenario, option: r.recommended, verified: true },
+      source: { type: 'verification', id: r.id },
+      evidenceIds: r.outcome.evidence.map((e) => e.id),
+    });
+    this.emit(w, r, 'outcome.restored', 'Outcome restored · watching again');
+    if (r.monitor) r.monitor.status = 'resolved';
+  }
+  expectedOutcome(r) {
+    const predicates = r.selected.operations.map((op, i) => ({
+      entity: `check:${r.id}:${i}`,
+      field: 'fulfilled',
+      equals: true,
+      label: this.verificationLabel(op, r),
+    }));
+    predicates.push({
+      entity: `goal:${r.id}`,
+      field: 'fulfilled',
+      equals: true,
+      label: 'Intended outcome independently verified',
+    });
+    const refundOp = r.selected.operations.find((op) => op.type === 'request_refund');
+    if (refundOp)
+      predicates.push({
+        entity: `refund:${r.id}`,
+        field: 'method',
+        equals: r.offer?.accepted ? 'credit' : 'cash',
+        label: r.offer?.accepted
+          ? 'Authorized credit independently confirmed'
+          : 'Cash received, not merely requested',
+      });
+    return { id: `outcome:${r.id}`, label: r.goal, predicates };
+  }
+  checkOutcome(w, r) {
+    const now = this.time(w),
+      at = new Date(now).toISOString();
+    const refundOp = r.selected.operations.find((op) => op.type === 'request_refund');
+    r.intent ||= this.expectedOutcome(r);
+    if (r.offer?.accepted) {
+      const method = r.intent.predicates.find((p) => p.entity === `refund:${r.id}`);
+      method.equals = 'credit';
+      method.label = 'Authorized credit independently confirmed';
+      const request = r.intent.predicates.find(
+        (p) => p.entity === `check:${r.id}:${r.selected.operations.indexOf(refundOp)}`,
+      );
+      request.label = 'Authorized airline credit confirmed';
+    }
+    r.intent.expectedBy = r.pendingRefund?.expectedBy || r.intent.expectedBy;
+    for (const [i, op] of r.selected.operations.entries()) {
+      if (op.type === 'request_refund' && r.pendingRefund) continue;
+      recordObservation(w, {
+        id: `verification:${r.id}:${i}:${w.revision}`,
+        entity: `check:${r.id}:${i}`,
+        field: 'fulfilled',
+        value: this.verify(w, r, op),
+        source: `world:${r.id}:${i}`,
+        directness: 'direct',
+        observedAt: at,
+      });
+    }
+    if (!r.pendingRefund)
+      recordObservation(w, {
+        id: `verification:${r.id}:goal:${w.revision}`,
+        entity: `goal:${r.id}`,
+        field: 'fulfilled',
+        value: this.goalSatisfied(w, r),
+        source: `world:${r.id}:goal`,
+        directness: 'direct',
+        observedAt: at,
+      });
+    if (refundOp && !r.pendingRefund)
+      recordObservation(w, {
+        id: `verification:${r.id}:method:${w.revision}`,
+        entity: `refund:${r.id}`,
+        field: 'method',
+        value: r.offer?.accepted
+          ? w.money.credits.some(
+              (receipt) => receipt.id === `${r.id}:${r.selected.operations.indexOf(refundOp)}`,
+            )
+            ? 'credit'
+            : 'none'
+          : w.money.refunds.some(
+                (a) =>
+                  a.id === `${r.id}:${r.selected.operations.indexOf(refundOp)}` &&
+                  a.provider === r.provider &&
+                  a.amount === refundOp.amount,
+              )
+            ? 'cash'
+            : 'none',
+        source: 'sandbox-receipt',
+        directness: 'direct',
+        observedAt: at,
+      });
+    r.verification = verifyExpectedOutcome(r.intent, w.observations, now);
+    r.outcome = {
+      verified: r.verification.verified,
+      status: r.verification.status,
+      at,
+      evidence: r.verification.evidence.map((e, i) => ({
+        id: `check:${r.id}:${i}`,
+        label: e.label,
+        passed: e.passed,
+      })),
+    };
+    if (!r.outcome.verified) {
+      const contradiction =
+        w.observations.some((f) => f.entity === `refund:${r.id}` && f.field === 'method') &&
+        verifyExpectedOutcome(
+          {
+            id: `refund-check:${r.id}`,
+            label: 'Cash refund',
+            predicates: [{ entity: `refund:${r.id}`, field: 'method', equals: 'cash' }],
+          },
+          w.observations,
+          now,
+        ).status === 'contradicted';
+      const replan = r.verification.overdue || contradiction || r.verification.next === 'replan';
+      r.monitor = {
+        status: replan ? 'replanning' : 'watching',
+        watchUntil: r.intent.expectedBy || null,
+        lastObservedAt: at,
+        condition: 'Independent confirmation that the intended outcome occurred',
+        humanDecisions: 0,
+        reason: contradiction
+          ? 'Provider claims disagree. Preserve both claims and the existing request; wait for direct evidence.'
+          : r.verification.overdue
+            ? 'The confirmation window passed. Waiting now delays recovery. Preserve the original request and prepare a reversible evidence check.'
+            : replan
+              ? 'Observed state does not satisfy the intended outcome. Prepare safer possibilities without repeating actions.'
+              : r.verification.waiting,
+        futures: replan
+          ? [
+              {
+                id: 'watch',
+                label: 'Keep watching the existing request',
+                feasible: !r.verification.overdue && !contradiction,
+                reversibility: 'reversible',
+              },
+              {
+                id: 'evidence',
+                label: 'Prepare a confirmation check',
+                feasible: true,
+                reversibility: 'reversible',
+              },
+            ]
+          : [],
+        plan: null,
+        worthToYou: r.verification.overdue
+          ? 'Waiting now delays recovery; a reversible evidence check preserves the existing claim.'
+          : contradiction
+            ? 'A direct receipt is worth more than conflicting provider claims. Preserve optionality until it arrives.'
+            : 'Waiting inside the confirmation window avoids unnecessary interruption and duplicate handling.',
+      };
+      if (replan)
+        r.monitor.plan = optionalityPlan({
+          uncertain: true,
+          deadlinePassed: r.verification.overdue,
+          options: r.monitor.futures,
+        });
+      r.compression.humanDecisions = r.monitor.plan?.humanDecisions || 0;
+      this.emit(
+        w,
+        r,
+        contradiction
+          ? 'contradiction.detected'
+          : replan
+            ? 'outcome.replanning'
+            : r.pendingRefund
+              ? 'outcome.watching'
+              : 'verification.failed',
+        contradiction
+          ? 'Conflicting refund evidence · watching for independent confirmation'
+          : replan
+            ? 'Expected outcome missing · plan adapted without repeating actions'
+            : r.pendingRefund
+              ? 'Refund requested, not received · continuing to watch'
+              : 'Outcome not restored · preparation and evidence review continue',
+      );
+    }
+  }
+  monitor(w) {
+    for (const r of w.resolutions)
+      if (
+        r.pendingRefund &&
+        !['stopped', 'outcome.restored'].includes(r.state) &&
+        !this.busy.has(r.id) &&
+        r.monitor?.status === 'watching' &&
+        this.time(w) >= Date.parse(r.pendingRefund.expectedBy)
+      )
+        this.checkOutcome(w, r);
+  }
+  observe(w, input) {
+    if (
+      !input ||
+      typeof input !== 'object' ||
+      Array.isArray(input) ||
+      Object.keys(input).some((k) => !['id', 'kind', 'minutes'].includes(k)) ||
+      !/^[a-zA-Z0-9-]{1,80}$/.test(input.id || '') ||
+      !['advance', 'refund-confirmed'].includes(input.kind)
+    )
+      throw Error('Invalid synthetic observation');
+    if (w.processedObservations.includes(input.id))
+      return { recognized: true, message: 'Observation already processed.' };
+    if (w.resolutions.some((r) => this.busy.has(r.id)))
+      throw Error('An authorized action is running. Stop it before changing its mandate.');
+    if (input.kind === 'advance') {
+      if (
+        !Number.isInteger(input.minutes) ||
+        input.minutes < 1 ||
+        input.minutes > 1440 ||
+        w.clockOffsetMinutes + input.minutes > 10080
+      )
+        throw Error('Invalid synthetic time');
+      w.clockOffsetMinutes += input.minutes;
+      this.emit(
+        w,
+        null,
+        'time.advanced',
+        'Synthetic time advanced; monitored conditions re-evaluated',
+      );
+      this.monitor(w);
+    } else {
+      const r = w.resolutions.find(
+        (r) => r.pendingRefund && !['stopped', 'outcome.restored'].includes(r.state),
+      );
+      if (!r) throw Error('No monitored refund');
+      const { op, id } = r.pendingRefund;
+      if (!w.money.refunds.some((a) => a.id === id)) {
+        w.money.refunds.push({ id, amount: op.amount, provider: r.provider });
+        w.resources.cash += op.amount;
+      }
+      // A direct synthetic receipt supersedes older claims, without deleting either claim.
+      const at = new Date(this.time(w)).toISOString();
+      recordObservation(w, {
+        id: `receipt:${r.id}`,
+        entity: `refund:${r.id}`,
+        field: 'method',
+        value: 'cash',
+        source: 'sandbox-receipt',
+        directness: 'direct',
+        observedAt: at,
+      });
+      r.pendingRefund = null;
+      this.emit(w, r, 'outcome.observed', 'Independent synthetic cash receipt observed');
+      this.checkOutcome(w, r);
+      if (r.outcome.verified) this.restore(w, r);
+    }
+    w.processedObservations.push(input.id);
+    w.processedObservations = w.processedObservations.slice(-100);
+    return { recognized: true, message: 'Synthetic observation processed. No external action.' };
   }
   async negotiate(w, r, op, id) {
     this.emit(w, r, 'provider.contacted', `Refund requested from ${r.provider}`);
@@ -495,7 +733,10 @@ export class LifeEngine {
           : '$412 cash is worth more to you',
       );
       if (r.offer.accepted) {
-        w.resources.airlineCredit = (w.resources.airlineCredit || 0) + 450;
+        if (!w.money.credits.some((receipt) => receipt.id === id)) {
+          w.resources.airlineCredit = (w.resources.airlineCredit || 0) + 450;
+          w.money.credits.push({ id, provider: r.provider, amount: 450 });
+        }
         r.offer.status = 'credit accepted';
         return;
       }
@@ -507,6 +748,36 @@ export class LifeEngine {
       await sleep(this.pace);
       if (r.state === 'stopped') throw Error('Stopped');
       this.emit(w, r, 'negotiating', 'Refund terms confirmed');
+    }
+    if (w.settings.confirmationMode !== 'immediate') {
+      r.pendingRefund = {
+        op: structuredClone(op),
+        id,
+        expectedBy: new Date(this.time(w) + 20 * 60000).toISOString(),
+      };
+      if (w.settings.confirmationMode === 'conflicting') {
+        const at = new Date(this.time(w)).toISOString();
+        for (const [source, value] of [
+          ['provider-status', 'cash'],
+          ['fulfillment-status', 'credit'],
+        ])
+          recordObservation(w, {
+            id: `claim:${r.id}:${source}`,
+            entity: `refund:${r.id}`,
+            field: 'method',
+            value,
+            source,
+            directness: 'claim',
+            observedAt: at,
+          });
+      }
+      this.emit(
+        w,
+        r,
+        'provider.pending',
+        'Refund request acknowledged; independent receipt still missing',
+      );
+      return;
     }
     if (!w.money.refunds.some((a) => a.id === id)) {
       w.money.refunds.push({ id, amount: op.amount, provider: r.provider });
@@ -649,8 +920,17 @@ export class LifeEngine {
         return (c?.status || w.work[op.id]) === op.status;
       case 'request_refund':
         return r.offer?.accepted
-          ? w.resources.airlineCredit >= 450
-          : w.money.refunds.some((a) => a.provider === r.provider && a.amount === op.amount);
+          ? w.money.credits.some(
+              (receipt) =>
+                receipt.id === `${r.id}:${r.selected.operations.indexOf(op)}` &&
+                receipt.amount === 450,
+            )
+          : w.money.refunds.some(
+              (a) =>
+                a.id === `${r.id}:${r.selected.operations.indexOf(op)}` &&
+                a.provider === r.provider &&
+                a.amount === op.amount,
+            );
       case 'send_message':
         return w.people.find((p) => p.id === op.id)?.communication === 'sandbox update sent';
       case 'reserve':
@@ -684,11 +964,17 @@ export class LifeEngine {
     }
   }
   change(w, input) {
+    if (input.observation) {
+      if (Object.keys(input).some((k) => k !== 'observation'))
+        throw Error('Observation must be separate from rule changes');
+      return this.observe(w, input.observation);
+    }
     const active = w.resolutions.find((r) => !['outcome.restored', 'stopped'].includes(r.state));
     if (active && this.busy.has(active.id))
       throw Error('An authorized action is running. Stop it before changing its mandate.');
     if (active?.actions.length)
       throw Error('Stop the partially executed resolution before changing its plan.');
+    const beforeMeeting = structuredClone(w.commitments.find((c) => c.id === 'morning'));
     const changes = {};
     if (typeof input.text === 'string') {
       const t = input.text.toLowerCase().trim();
@@ -743,6 +1029,7 @@ export class LifeEngine {
       riskTolerance: ['low', 'balanced', 'high'],
       calendarPriority: ['personal', 'balanced', 'professional'],
       subscriptionUsage: ['low', 'high'],
+      confirmationMode: ['immediate', 'delayed', 'conflicting'],
     };
     for (const [key, value] of Object.entries(changes)) {
       if (bounds[key]) {
@@ -774,6 +1061,43 @@ export class LifeEngine {
         if (!w.dependencies.some(([a, b]) => a === 'flight' && b === 'hotel'))
           w.dependencies.push(['flight', 'hotel'], ['hotel', 'cash']);
       } else w.settings[key] = value;
+    }
+    if (
+      ['meetingHour', 'meetingPreparation', 'meetingTravel'].some((k) => Object.hasOwn(changes, k))
+    ) {
+      const after = w.commitments.find((c) => c.id === 'morning'),
+        at = new Date(this.time(w)).toISOString();
+      w.temporalChanges ||= [];
+      w.temporalChanges.push({
+        id: `temporal:${randomUUID()}`,
+        entity: after.id,
+        expected: {
+          hour: beforeMeeting.hour,
+          preparationMinutes: beforeMeeting.preparationMinutes,
+          travelMinutes: beforeMeeting.travelMinutes,
+        },
+        observed: {
+          hour: after.hour,
+          preparationMinutes: after.preparationMinutes,
+          travelMinutes: after.travelMinutes,
+        },
+        observedAt: at,
+        source: 'Explicit synthetic world update',
+        operationalHour:
+          after.hour - ((after.preparationMinutes || 0) + (after.travelMinutes || 0)) / 60,
+        conclusion:
+          'The nominal start and the time required to protect this commitment are different.',
+      });
+      w.temporalChanges = w.temporalChanges.slice(-30);
+      recordObservation(w, {
+        id: `meeting:${randomUUID()}`,
+        entity: 'morning',
+        field: 'hour',
+        value: after.hour,
+        source: 'synthetic-world-update',
+        directness: 'direct',
+        observedAt: at,
+      });
     }
     const temporary = Object.keys(changes).some((k) =>
       [

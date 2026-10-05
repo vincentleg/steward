@@ -1020,3 +1020,56 @@ footer a {
     order: 6;
   }
 }
+
+.continuity-panel {
+  margin-top: 28px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line, #dfe3e9);
+}
+.continuity-panel h2 {
+  font-size: clamp(24px, 3vw, 34px);
+  margin: 12px 0 20px;
+}
+.truth-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.truth-comparison p {
+  margin: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.truth-comparison small {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #465b7c;
+}
+.truth-comparison span,
+.continuity-panel details small {
+  font-size: 13px;
+  color: #566376;
+  line-height: 1.5;
+}
+.continuity-panel details {
+  margin: 18px 0;
+  font-size: 14px;
+}
+.world-observation {
+  padding: 20px 0 0;
+  border-top: 1px solid #dfe3e9;
+  margin-top: 20px;
+}
+.world-observation button {
+  margin: 4px 8px 4px 0;
+}
+@media (max-width: 600px) {
+  .truth-comparison {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .world-observation button {
+    width: 100%;
+  }
+}

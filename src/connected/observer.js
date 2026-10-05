@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { recordObservation } from '../core/temporal-truth.js';
 import { impactGraph, detectDeviation } from '../core/impact.js';
 import { simulateFutures, rankFutures, compressDecision } from '../core/intelligence.js';
 import { temporalConsequences, meaningfulChange } from '../core/outcome-intelligence.js';
@@ -81,6 +82,7 @@ export class ConnectedObserver {
           evaluatedAt: new Date(this.now()).toISOString(),
         };
         const changes = [];
+        const initializeTemporal = !world.observations;
         for (const item of items) {
           const old = previous.find((x) => x.id === item.id);
           const projected = {
@@ -107,7 +109,53 @@ export class ConnectedObserver {
             !(item.status === 'cancelled' && old && Date.parse(old.end) > Date.parse(timeMin))
           )
             continue;
+          // Only owner-scoped, minimized Calendar facts enter the private temporal model.
+          // This projection does not add provider calls, scopes, or any external action.
+          for (const field of ['start', 'end', 'status', 'location']) {
+            if (
+              projected[field] === undefined ||
+              (!initializeTemporal &&
+                old &&
+                old[field] === projected[field] &&
+                old.updated === projected.updated)
+            )
+              continue;
+            const id = `calendar-fact:${digest({ id: item.id, field, value: projected[field], updated: item.updated })}`;
+            if (!world.observations?.some((f) => f.id === id))
+              recordObservation(world, {
+                id,
+                entity: `commitment:${digest(item.id)}`,
+                field,
+                value: projected[field],
+                source: 'google-calendar-primary',
+                directness: 'direct',
+                observedAt: world.calendarAnalysis.evaluatedAt,
+                ...(item.updated ? { providerChangedAt: item.updated } : {}),
+              });
+          }
           if (baseline && old && digest(old) !== digest(projected)) {
+            world.temporalChanges ||= [];
+            world.temporalChanges.push({
+              entity: item.id,
+              source: 'google-calendar-primary',
+              expected: {
+                start: old.start,
+                end: old.end,
+                status: old.status,
+                location: old.location,
+              },
+              observed: {
+                start: projected.start,
+                end: projected.end,
+                status: projected.status,
+                location: projected.location,
+              },
+              observedAt: world.calendarAnalysis.evaluatedAt,
+              changedAt: item.updated || null,
+              conclusion:
+                'Direct Calendar observation changed; importance and external authority remain unchanged.',
+            });
+            world.temporalChanges = world.temporalChanges.slice(-30);
             this.event(
               owner,
               'calendar',

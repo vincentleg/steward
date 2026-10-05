@@ -1,3 +1,4 @@
+import { operationalWindow } from './temporal-truth.js';
 import { commitmentModel, temporalConsequences, temporalFutures } from './outcome-intelligence.js';
 /** Read-only, domain-independent operational projection. Never grants authority. */
 export function understandWorld(world, { now = Date.now() } = {}) {
@@ -67,6 +68,26 @@ export function understandWorld(world, { now = Date.now() } = {}) {
       ),
     ),
     temporalConsequences: temporal,
+    timeline: (world.temporalChanges || []).slice(-8),
+    operationalWindows: commitments
+      .filter((c) => c.start?.includes('T'))
+      .map((c) => {
+        const rule = world.commitmentAnnotations?.[c.id] || {};
+        const original = (world.commitments || []).find((item) => item.id === c.id);
+        return {
+          id: c.id,
+          label: c.label,
+          ...operationalWindow(
+            {
+              start: c.start,
+              end: c.end?.includes('T') ? c.end : null,
+              preparationMinutes: rule.preparationMinutes ?? original?.preparationMinutes ?? null,
+              travelMinutes: rule.travelMinutes ?? original?.travelMinutes ?? null,
+            },
+            now,
+          ),
+        };
+      }),
     planning: temporal
       .slice(0, 8)
       .map((c) => temporalFutures(c, world.commitments, world.commitmentAnnotations)),

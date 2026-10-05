@@ -36,6 +36,7 @@ export function createSandbox({
     communicate: async () => ({ channel: 'sandbox', delivery: 'received' }),
   });
   function cleanup() {
+    life.tick();
     for (const [id, run] of store.runs) {
       if (Date.parse(run.expiresAt) <= now()) {
         run.stopped = true;

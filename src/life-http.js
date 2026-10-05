@@ -21,8 +21,8 @@ export function lifeService({
         ...body,
         world: {
           ...body.world,
-          understanding: understandWorld(body.world, { now: now() }),
-          presence: intelligenceState(body.world),
+          understanding: understandWorld(body.world, { now: engine.time(body.world) }),
+          presence: intelligenceState(body.world, [], now()),
         },
       };
     res.end(JSON.stringify(body));
@@ -45,6 +45,10 @@ export function lifeService({
   return {
     engine,
     sessions,
+    tick() {
+      clean();
+      for (const session of sessions.values()) engine.monitor(session.world);
+    },
     async handle(req, res, url) {
       clean();
       if (req.method === 'GET' && ['/sandbox', '/sandbox/', '/life'].includes(url.pathname)) {
@@ -89,6 +93,7 @@ export function lifeService({
           }
         }
         if (req.method === 'GET' && match && !match[2]) {
+          engine.monitor(session.world);
           json(res, 200, {
             world: session.world,
             expiresAt: new Date(session.expires).toISOString(),
@@ -130,7 +135,7 @@ export function lifeService({
           start: ['scenario'],
           approve: ['id', 'revision'],
           stop: ['id'],
-          change: ['text', 'settings'],
+          change: ['text', 'settings', 'observation'],
         }[route];
         if (!keys || Object.keys(input).some((k) => !keys.includes(k)))
           throw Error('Unsupported input');

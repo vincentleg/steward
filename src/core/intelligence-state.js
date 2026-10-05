@@ -23,7 +23,12 @@ export function intelligenceState(world, decisions = [], now = Date.now()) {
     'refund.confirmed': 'verifying',
     'outcome.verifying': 'verifying',
     'outcome.restored': 'resolved',
-    'verification.failed': 'needs-you',
+    'verification.failed': 'replanning',
+    'provider.pending': 'watching',
+    'outcome.watching': 'watching',
+    'outcome.replanning': 'replanning',
+    'contradiction.detected': 'contradicted',
+    'outcome.observed': 'verifying',
     'action.failed': 'needs-you',
     observing: 'observing',
     stopped: 'observing',
@@ -47,7 +52,29 @@ export function intelligenceState(world, decisions = [], now = Date.now()) {
         : last?.impact?.affectedCount || world?.calendarAnalysis?.consequences || 0,
     futures: state === 'stable' ? 0 : last?.futures?.length || 0,
     decisions: state === 'needs-you' ? 1 : 0,
-    uncertainty: last?.evaluation?.requiresJudgment ? 1 : 0,
+    uncertainty:
+      last?.verification && !last.verification.verified
+        ? 1
+        : last?.evaluation?.requiresJudgment
+          ? 1
+          : 0,
+    temporalPressure: ['stable', 'resolved'].includes(state)
+      ? 0
+      : last?.verification?.overdue
+        ? 1
+        : last?.pendingRefund
+          ? Math.max(
+              0,
+              Math.min(
+                1,
+                1 -
+                  (Date.parse(last.pendingRefund.expectedBy) -
+                    (now + (world.clockOffsetMinutes || 0) * 60000)) /
+                    1200000,
+              ),
+            )
+          : 0,
+    contradiction: last?.verification?.status === 'contradicted',
     signalId: world?.events?.at(-1)?.id || world?.calendarAssessments?.at(-1)?.observedAt || null,
   };
 }
